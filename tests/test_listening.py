@@ -55,6 +55,22 @@ class ListeningTests(unittest.TestCase):
         response = TestClient(server.app).post('/v1/audio/cue', json={'kind': 'arbitrary'})
         self.assertEqual(response.status_code, 422)
 
+    def test_chimes_are_short_bounded_and_do_not_use_speech_model(self):
+        import numpy as np
+        server.cached_cue.cache_clear()
+        with patch('neural_voice.synthesize') as synth:
+            cues = [server.cached_cue(kind, 'kokoro', 'am_liam') for kind in ['listening', 'paused']]
+            synth.assert_not_called()
+        self.assertNotEqual(*cues)
+        for pcm in cues:
+            samples = np.frombuffer(pcm, dtype='<i2')
+            self.assertTrue(12000 <= len(samples) <= 24000)
+            self.assertGreater(np.max(np.abs(samples)), 1000)
+            self.assertLessEqual(np.max(np.abs(samples)), 11500)
+            self.assertEqual(int(samples[0]), 0)
+            self.assertTrue(np.all(samples[-240:] == 0))
+        server.cached_cue.cache_clear()
+
 
 if __name__ == '__main__':
     unittest.main()

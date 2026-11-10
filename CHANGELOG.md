@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1-preview.1
+
+- Fifteen-second listening and follow-up windows; longer pauses within questions.
+- Shorter gaps between wake checks and quiet return to wake mode after silence.
+- Original rising ready and falling pause chimes, generated locally.
+- Deterministic capture timing, buffer-limit, cancellation, and chime tests.
+
 ## 0.3.0-preview.1
 
 - Optional local Hello Franky recognition, automatic question recording, and spoken thinking acknowledgment.

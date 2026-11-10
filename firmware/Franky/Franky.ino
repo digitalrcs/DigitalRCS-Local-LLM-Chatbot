@@ -16,7 +16,7 @@
 #include "SetupPage.h"
 
 struct Job { char url[160]; int volume,brightness,threshold; bool held; uint8_t kind; };
-struct Event { Mood mood; bool done,settings,engaged,pause; int volume,brightness; char text[200]; };
+struct Event { Mood mood; bool done,settings,engaged,pause,followUp; int volume,brightness; char text[200]; };
 QueueHandle_t jobs,events;
 Audio audio;
 Face face;
@@ -26,15 +26,15 @@ DNSServer dns;
 String ssid,password,bridge,csrf,state="Starting",statusDetail,lastText;
 int volume=60,brightness=80;
 bool busy=false,audioReady=false,ap=false,hadConnection=false,greeted=false;
-bool handsFree=false,paused=false,wakeMonitoring=false,pendingManual=false;
+bool handsFree=false,paused=false,wakeMonitoring=false,pendingManual=false,followUpReady=false;
 int wakeThreshold=120;
 std::atomic<bool> cancelListening{false};
 Mood mood=Mood::Setup;
-uint32_t restartAt=0,offlineSince=0,upSince=0,downSince=0,lastInteraction=0;
+uint32_t restartAt=0,offlineSince=0,upSince=0,downSince=0,lastInteraction=0,nextListenAt=0;
 
-void notify(Mood m,const String& text,bool done=false,bool settings=false,int vol=0,int bright=0,bool engaged=false,bool pause=false) {
+void notify(Mood m,const String& text,bool done=false,bool settings=false,int vol=0,int bright=0,bool engaged=false,bool pause=false,bool followUp=false) {
   Event e{}; e.mood=m; e.done=done; e.settings=settings; e.volume=vol; e.brightness=bright;
-  e.engaged=engaged;e.pause=pause;
+  e.engaged=engaged;e.pause=pause;e.followUp=followUp;
   text.toCharArray(e.text,sizeof(e.text)); xQueueSend(events,&e,portMAX_DELAY);
 }
 
@@ -53,7 +53,7 @@ void voiceTask(void*) {
     bool ok=true;
     if(job.kind==3) {
       ReplyBuffer snippet(16000*4*2);
-      size_t count=snippet.data?audio.utterance(reinterpret_cast<int16_t*>(snippet.data),16000*4,3000,job.threshold,cancelListening):0;
+      size_t count=snippet.data?audio.utterance(reinterpret_cast<int16_t*>(snippet.data),16000*4,15000,job.threshold,cancelListening):0;
       if(cancelListening.load() || count==0){notify(Mood::Idle,"Say Hello Franky",true);continue;}
       JsonDocument detection;
       bool heard=client.transcribe(reinterpret_cast<int16_t*>(snippet.data),count,detection,true);
@@ -66,6 +66,10 @@ void voiceTask(void*) {
         notify(heard?Mood::Idle:Mood::Error,heard?"Say Hello Franky":"Wake service unavailable",true);continue;
       }
       notify(Mood::Listening,"Hello! I'm listening",false,false,0,0,true);
+      playCue(client,"listening",job.volume);
+      if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);continue;}
+    }
+    if(job.kind==4) {
       playCue(client,"listening",job.volume);
       if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);continue;}
     }
@@ -87,15 +91,16 @@ void voiceTask(void*) {
       ReplyBuffer cue(480000);client.cue("thinking",cue);
     }
     else {
-      notify(Mood::Listening,"Listening...");
-      size_t limit=16000*((job.held||job.kind==3)?10:6);
+      const bool automatic=job.kind==3||job.kind==4;
+      notify(Mood::Listening,automatic?"Listening - take your time":"Listening...");
+      size_t limit=16000*((job.held||automatic)?10:6);
       ReplyBuffer recording(limit*2);
       size_t count=0;
-      if(recording.data)count=job.kind==3
-        ?audio.utterance(reinterpret_cast<int16_t*>(recording.data),limit,5000,job.threshold,cancelListening)
+      if(recording.data)count=automatic
+        ?audio.utterance(reinterpret_cast<int16_t*>(recording.data),limit,15000,job.threshold,cancelListening,1500)
         :audio.record(reinterpret_cast<int16_t*>(recording.data),limit,job.held,cancelListening);
       if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);continue;}
-      if(count<3200) { notify(Mood::Error,job.kind==3?"I didn't hear a question":"Hold BOOT a little longer",true); continue; }
+      if(count<3200) { notify(automatic?Mood::Idle:Mood::Error,automatic?"Say Hello Franky":"Hold BOOT a little longer",true); continue; }
       notify(Mood::Thinking,"Hearing your words...");
       JsonDocument transcript;
       if(!client.transcribe(reinterpret_cast<int16_t*>(recording.data),count,transcript)) {
@@ -142,7 +147,7 @@ void voiceTask(void*) {
     if(!client.speech(answer,pcm)) {notify(Mood::Error,"Voice service unavailable",true);continue;}
     notify(Mood::Speaking,answer);
     ok=audio.play(pcm.data,pcm.used,job.volume);
-    notify(ok?Mood::Happy:Mood::Error,ok?"Ready for another question":"Speaker playback failed",true);
+    notify(ok?Mood::Happy:Mood::Error,ok?"Ready for another question":"Speaker playback failed",true,false,0,0,false,false,ok&&(job.kind==3||job.kind==4));
   }
 }
 
@@ -185,7 +190,7 @@ void routes() {
   const char* headers[]={"X-Franky-Token"};web.collectHeaders(headers,1);
   web.on("/",HTTP_GET,[]{web.sendHeader("Cache-Control","no-store");web.send_P(200,"text/html",setupPage);});
   web.on("/status",HTTP_GET,[]{
-    JsonDocument d;d["version"]="0.2.0-dev";d["state"]=state;d["busy"]=busy;d["audio"]=audioReady;d["connected"]=WiFi.status()==WL_CONNECTED;
+    JsonDocument d;d["version"]="0.3.1-dev";d["state"]=state;d["busy"]=busy;d["audio"]=audioReady;d["connected"]=WiFi.status()==WL_CONNECTED;
     d["ssid"]=ssid;d["bridge"]=bridge;d["volume"]=volume;d["brightness"]=brightness;d["token"]=csrf;d["text"]=lastText;
     d["hands_free"]=handsFree;d["paused"]=paused;d["wake_monitoring"]=wakeMonitoring;d["wake_threshold"]=wakeThreshold;
     d["ip"]=WiFi.localIP().toString();d["psram_free"]=ESP.getFreePsram();jsonReply(200,d);
@@ -198,8 +203,8 @@ void routes() {
     int threshold=d["threshold"];if(threshold<60||threshold>1200){errorReply(400,"Sensitivity threshold: 60-1200");return;}
     handsFree=d["enabled"].as<bool>();paused=d["paused"].as<bool>();wakeThreshold=threshold;
     prefs.putBool("handsfree",handsFree);prefs.putBool("paused",paused);prefs.putInt("wakethresh",threshold);
-    if(paused||wakeMonitoring)cancelListening.store(true);
-    pendingManual=false;
+    if(paused||!handsFree||wakeMonitoring)cancelListening.store(true);
+    pendingManual=false;followUpReady=false;
     d.clear();d["ok"]=true;jsonReply(200,d);
   });
   web.on("/controls",HTTP_POST,[]{
@@ -228,13 +233,13 @@ void routes() {
   web.on("/test-sound",HTTP_POST,[]{
     if(!authorized())return;if(!audioReady){errorReply(503,"Audio hardware unavailable");return;}startJob(2);JsonDocument d;d["ok"]=busy;jsonReply(busy?202:503,d);
   });
-  web.on("/about",HTTP_GET,[]{web.send(200,"text/plain","Franky firmware 0.2.0-dev\nCopyright 2026 DigitalRCS. Original application and artwork: MIT.\nCodec drivers: Espressif, Apache-2.0. Display: Adafruit BSD. Arduino core and other dependencies retain their licenses.\nNo warranty. Source and full notices: https://github.com/digitalrcs/DigitalRCS-Local-LLM-Chatbot\n");});
+  web.on("/about",HTTP_GET,[]{web.send(200,"text/plain","Franky firmware 0.3.1-dev\nCopyright 2026 DigitalRCS. Original application and artwork: MIT.\nCodec drivers: Espressif, Apache-2.0. Display: Adafruit BSD. Arduino core and other dependencies retain their licenses.\nNo warranty. Source and full notices: https://github.com/digitalrcs/DigitalRCS-Local-LLM-Chatbot\n");});
   web.onNotFound([]{if(ap){web.sendHeader("Location","http://192.168.4.1");web.send(302,"text/plain","");}else errorReply(404,"Not found");});
   web.begin();
 }
 
 void setup() {
-  Serial.begin(115200);delay(300);Serial.println("DigitalRCS Franky independent firmware 0.2.0-dev");
+  Serial.begin(115200);delay(300);Serial.println("DigitalRCS Franky independent firmware 0.3.1-dev");
   pinMode(Board::talk,INPUT_PULLUP);pinMode(Board::pageUp,INPUT_PULLUP);pinMode(Board::pageDown,INPUT_PULLUP);
   prefs.begin("franky2",false);
   ssid=prefs.getString("ssid","");password=prefs.getString("pass","");bridge=prefs.getString("bridge","");
@@ -266,7 +271,11 @@ void loop() {
     if(event.settings)saveLevels(event.volume,event.brightness);
     if(event.engaged)wakeMonitoring=false;
     if(event.pause){paused=true;prefs.putBool("paused",true);cancelListening.store(true);}
-    if(event.done){busy=false;wakeMonitoring=false;lastInteraction=millis();}
+    if(event.done){
+      nextListenAt=millis()+(wakeMonitoring?(event.mood==Mood::Error?2000:40):700);
+      followUpReady=event.followUp&&handsFree&&!paused&&!cancelListening.load();
+      busy=false;wakeMonitoring=false;lastInteraction=millis();
+    }
   }
   bool connected=WiFi.status()==WL_CONNECTED;
   if(connected&&!hadConnection) {
@@ -296,8 +305,10 @@ void loop() {
   if(!busy&&!ap&&mood==Mood::Happy&&millis()-lastInteraction>1800){mood=Mood::Idle;state="Hold BOOT to talk";}
   if(!busy&&!ap&&mood==Mood::Error&&millis()-lastInteraction>10000&&audioReady){mood=Mood::Idle;state="Hold BOOT to retry";}
   if(paused){state="Listening paused";statusDetail="Press BOOT to resume";mood=Mood::Idle;}
-  else if(handsFree&&!ap&&(!busy||wakeMonitoring)){state="Say Hello Franky";statusDetail="Wait for I'm listening, then ask";mood=Mood::Idle;}
-  if(handsFree&&!paused&&!busy&&!ap&&connected&&greeted&&millis()-lastInteraction>700)startJob(3);
+  else if(handsFree&&!ap&&(!busy||wakeMonitoring)){state="Say Hello Franky";statusDetail="Wait for the chime, then ask";mood=Mood::Idle;}
+  if(handsFree&&!paused&&!busy&&!ap&&connected&&greeted&&int32_t(millis()-nextListenAt)>=0){
+    uint8_t kind=followUpReady?4:3;followUpReady=false;startJob(kind);
+  }
   face.draw(mood,state,statusDetail);
   if(restartAt&&int32_t(millis()-restartAt)>=0)ESP.restart();
   delay(5);

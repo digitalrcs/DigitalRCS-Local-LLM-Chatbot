@@ -102,11 +102,12 @@ public:
   // Record an utterance with 256 ms pre-roll and 800 ms trailing silence.
   // Bounded waiting and cancellation keep pause/BOOT responsive. Energy gating
   // is deliberately simple; the bridge's local VAD validates speech afterward.
-  size_t utterance(int16_t* output,size_t capacity,uint32_t waitMs,int threshold,const std::atomic<bool>& cancel) {
+  size_t utterance(int16_t* output,size_t capacity,uint32_t waitMs,int threshold,const std::atomic<bool>& cancel,uint32_t silenceMs=800) {
     if(cancel.load() || !mode(true)) return 0;
     int16_t stereo[512],pre[4096]{};
     size_t ring=0,filled=0,count=0,quiet=0,voiced=0;
     bool started=false;uint32_t began=millis();
+    const size_t quietLimit=size_t(silenceMs)*16;
     for(int i=0;i<8;i++)i2s.readBytes(reinterpret_cast<char*>(stereo),sizeof(stereo));
     while(!cancel.load() && count<capacity) {
       if(!started && millis()-began>=waitMs)break;
@@ -122,7 +123,11 @@ public:
       if(started) {
         for(size_t i=0;i<n && count<capacity;i++)output[count++]=stereo[2*i];
         if(loud){quiet=0;voiced+=n;}else quiet+=n;
-        if(quiet>=12800)break;
+        if(quiet>=quietLimit) {
+          if(voiced>=1600)break;
+          // A click or bump must not consume the entire listening window.
+          started=false;count=quiet=voiced=ring=filled=0;
+        }
       } else {
         for(size_t i=0;i<n;i++){pre[ring]=stereo[2*i];ring=(ring+1)%4096;if(filled<4096)filled++;}
       }

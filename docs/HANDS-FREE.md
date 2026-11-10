@@ -7,8 +7,10 @@ With the updated PC bridge and firmware, Franky can answer without holding a but
 1. Start the updated voice bridge and LM Studio as usual.
 2. Open the device address shown on Franky's screen in your phone's browser.
 3. Under **Hands-free conversations**, check **Enable Hello Franky** and choose **Save hands-free settings**.
-4. Say **Hello Franky** on its own. Wait for **I'm listening**, then ask your question.
-5. Pause briefly when finished. Franky ends the recording after about 0.8 seconds of quiet, or at the ten-second limit.
+4. Say **Hello Franky** on its own. Wait for the **rising ready chime**, then ask your question. You have about **15 seconds to start speaking**.
+5. Pause briefly when finished. Franky ends the recording after about 1.5 seconds of quiet, or at the ten-second limit.
+
+After each hands-free answer, a quiet ready chime opens another 15-second window for a follow-up without a wake phrase. If you stay quiet, Franky returns to wake-word mode without an error. A falling chime confirms a spoken pause command. These original bell sounds are generated locally and do not need a speech model.
 
 Before requesting the model's answer, Franky says **One moment, let me think**. This neutral acknowledgment does not promise that he can fulfill the request. Simple volume/brightness commands receive their normal confirmation instead. Short voice cues are cached on the PC for the selected voice; the first use can take longer.
 
@@ -34,3 +36,5 @@ The local recognizer accepts Franky/Frankie spellings. It requires a standalone 
 Hands-free is off by default on fresh installations. When enabled and not paused, the kit samples room audio and sends speech-like snippets to the bridge PC for local Whisper recognition. Background snippets do not go to LM Studio or cloud chat providers, and their transcripts are not returned to the device or intentionally stored. After a successful wake, your question goes through your selected provider as usual. Optional cloud providers receive the question text.
 
 This mode uses more PC processing and LAN traffic than button mode. Keep the bridge PC awake. A lost connection means wake recognition is unavailable. Use only a trusted home network.
+
+During an open question or follow-up window, detected speech is treated as a question and may be sent as text to your selected provider. Use **stop listening** to end listening when other conversations are happening nearby.
