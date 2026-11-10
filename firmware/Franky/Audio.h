@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <ESP_I2S.h>
 #include <Wire.h>
+#include <atomic>
 #include "Board.h"
 #include "src/codec/es8311_codec.h"
 #include "src/codec/es7210_adc.h"
@@ -69,12 +70,12 @@ public:
     else { if(dac->set_vol(dac,-6.0f) || dac->mute(dac,false)) { stop(); return false; } digitalWrite(Board::amplifier,HIGH); }
     i2s.setTimeout(200); return true;
   }
-  size_t record(int16_t* output,size_t capacity,bool held) {
-    if (!mode(true)) return 0;
+  size_t record(int16_t* output,size_t capacity,bool held,const std::atomic<bool>& cancel) {
+    if (cancel.load() || !mode(true)) return 0;
     int16_t stereo[512]; size_t count=0;
     // Discard settling noise after powering the microphone.
     for(int i=0;i<8;i++) i2s.readBytes(reinterpret_cast<char*>(stereo),sizeof(stereo));
-    while(count<capacity && (!held || digitalRead(Board::talk)==LOW)) {
+    while(!cancel.load() && count<capacity && (!held || digitalRead(Board::talk)==LOW)) {
       size_t bytes=i2s.readBytes(reinterpret_cast<char*>(stereo),sizeof(stereo));
       if (!bytes || bytes%4) break;
       for(size_t i=0;i<bytes/2 && count<capacity;i+=2) output[count++]=stereo[i];
@@ -97,5 +98,36 @@ public:
       offset+=n*2; delay(1);
     }
     delay(100); stop(); return true;
+  }
+  // Record an utterance with 256 ms pre-roll and 800 ms trailing silence.
+  // Bounded waiting and cancellation keep pause/BOOT responsive. Energy gating
+  // is deliberately simple; the bridge's local VAD validates speech afterward.
+  size_t utterance(int16_t* output,size_t capacity,uint32_t waitMs,int threshold,const std::atomic<bool>& cancel) {
+    if(cancel.load() || !mode(true)) return 0;
+    int16_t stereo[512],pre[4096]{};
+    size_t ring=0,filled=0,count=0,quiet=0,voiced=0;
+    bool started=false;uint32_t began=millis();
+    for(int i=0;i<8;i++)i2s.readBytes(reinterpret_cast<char*>(stereo),sizeof(stereo));
+    while(!cancel.load() && count<capacity) {
+      if(!started && millis()-began>=waitMs)break;
+      size_t bytes=i2s.readBytes(reinterpret_cast<char*>(stereo),sizeof(stereo));
+      if(!bytes || bytes%4)break;
+      size_t n=bytes/4;uint32_t energy=0;
+      for(size_t i=0;i<n;i++)energy+=abs(int(stereo[2*i]));
+      bool loud=energy/n>=uint32_t(threshold);
+      if(!started && loud) {
+        started=true;
+        for(size_t i=0;i<filled && count<capacity;i++)output[count++]=pre[(ring+4096-filled+i)%4096];
+      }
+      if(started) {
+        for(size_t i=0;i<n && count<capacity;i++)output[count++]=stereo[2*i];
+        if(loud){quiet=0;voiced+=n;}else quiet+=n;
+        if(quiet>=12800)break;
+      } else {
+        for(size_t i=0;i<n;i++){pre[ring]=stereo[2*i];ring=(ring+1)%4096;if(filled<4096)filled++;}
+      }
+      delay(1);
+    }
+    stop();return cancel.load() || voiced<1600?0:count;
   }
 };

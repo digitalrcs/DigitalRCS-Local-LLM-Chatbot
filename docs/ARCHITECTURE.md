@@ -18,6 +18,8 @@ The wizard writes `bridge/config.json`, which Git and the release builder exclud
 | POST `/voice` | JSON `{"voice":"am_liam"}` | Persisted selection |
 | POST `/voice/preview` | Same voice JSON | Playable WAV preview; does not save selection |
 | POST `/v1/audio/transcriptions` | Multipart `file`: mono 16-bit 16 kHz WAV, <=13 seconds and <=500 KB | `text` and optional deterministic `control` metadata |
+| POST `/v1/audio/wake` | Same local WAV contract | Boolean `wake` and `pause` flags only; no transcript or provider call |
+| POST `/v1/audio/cue` | JSON `kind`: listening, thinking, or paused | Selected-voice cached PCM16, mono 24 kHz |
 | POST `/v1/chat/completions` | JSON `messages` with system/user/assistant roles | One assistant message; non-streaming |
 | POST `/v1/audio/speech` | JSON `{"input":"Hello"}` | Raw signed little-endian PCM16, mono 24 kHz, <=60 seconds |
 
@@ -38,3 +40,5 @@ CPU speech recognition is serialized. Speech generation is serialized to protect
 ## Robot execution
 
 The main task handles the LCD, setup HTTP server, DNS, buttons, and persisted settings. One background task owns microphone/speaker access and blocking bridge requests. Bounded queues carry work and status/control results. Settings changes are rejected while a conversation is active. Microphone recordings and speech buffers use PSRAM, with explicit duration and response-size limits.
+
+The listening-settings endpoint is an exception to idle-only writes: it can cancel capture during background listening or a question. Cancellation uses an atomic flag; only the audio task touches I2S. Pause persists in NVS. Background energy-gated utterances are bounded to four seconds, with pre-roll and trailing silence, and sent only to the local wake endpoint. Accepted wake phrases cause a ready cue, then a separate bounded question recording. Capture is half-duplex and suspended during recognition/playback. See [hands-free limitations](HANDS-FREE.md).

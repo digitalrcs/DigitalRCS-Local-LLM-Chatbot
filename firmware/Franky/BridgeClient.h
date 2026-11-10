@@ -22,10 +22,10 @@ class BridgeClient {
   String base;
 public:
   explicit BridgeClient(const String& url):base(url) {}
-  bool request(const char* endpoint,const char* type,const uint8_t* body,size_t length,ReplyBuffer& reply) {
+  bool request(const char* endpoint,const char* type,const uint8_t* body,size_t length,ReplyBuffer& reply,uint16_t timeout=60000) {
     if(!reply.data) return false;
     WiFiClient transport; HTTPClient http;
-    http.setConnectTimeout(5000); http.setTimeout(60000); http.setReuse(false);
+    http.setConnectTimeout(3000); http.setTimeout(timeout); http.setReuse(false);
     if(!http.begin(transport,base+endpoint)) return false;
     http.addHeader("Content-Type",type);
     int status=http.POST(const_cast<uint8_t*>(body),length);
@@ -41,7 +41,7 @@ public:
     return request(endpoint,"application/json",reinterpret_cast<const uint8_t*>(payload.c_str()),payload.length(),reply)
       && !deserializeJson(output,reply.data,reply.used);
   }
-  bool transcribe(const int16_t* pcm,size_t samples,JsonDocument& output) {
+  bool transcribe(const int16_t* pcm,size_t samples,JsonDocument& output,bool wake=false) {
     const char* boundary="FrankyAudioBoundary7d2";
     String prefix=String("--")+boundary+"\r\nContent-Disposition: form-data; name=\"file\"; filename=\"recording.wav\"\r\nContent-Type: audio/wav\r\n\r\n";
     String suffix=String("\r\n--")+boundary+"--\r\n";
@@ -58,12 +58,17 @@ public:
     body.write(reinterpret_cast<const uint8_t*>(suffix.c_str()),suffix.length());
     ReplyBuffer reply(8000);
     String type=String("multipart/form-data; boundary=")+boundary;
-    return request("/v1/audio/transcriptions",type.c_str(),body.data,body.used,reply)
+    return request(wake?"/v1/audio/wake":"/v1/audio/transcriptions",type.c_str(),body.data,body.used,reply,wake?8000:60000)
       && !deserializeJson(output,reply.data,reply.used);
   }
   bool speech(const String& text,ReplyBuffer& output) {
     JsonDocument json; json["input"]=text; String payload; serializeJson(json,payload);
     return request("/v1/audio/speech","application/json",reinterpret_cast<const uint8_t*>(payload.c_str()),payload.length(),output)
+      && output.used%2==0;
+  }
+  bool cue(const char* kind,ReplyBuffer& output) {
+    JsonDocument json;json["kind"]=kind;String payload;serializeJson(json,payload);
+    return request("/v1/audio/cue","application/json",reinterpret_cast<const uint8_t*>(payload.c_str()),payload.length(),output)
       && output.used%2==0;
   }
 };

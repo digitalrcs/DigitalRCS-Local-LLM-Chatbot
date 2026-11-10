@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0-preview.1
+
+- Optional local Hello Franky recognition, automatic question recording, and spoken thinking acknowledgment.
+- Persistent microphone pause by voice or web control; BOOT resumes listening.
+- Configurable microphone threshold, selected-voice cue cache, and wake/pause boundary tests.
+- Background snippets stay on the local bridge; hands-free is disabled on fresh installations.
+
 ## 0.2.0-preview.1
 
 - New independent Franky firmware source, original animated frog artwork, setup page, and build/flash scripts.

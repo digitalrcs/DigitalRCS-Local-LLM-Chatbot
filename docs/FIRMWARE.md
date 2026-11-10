@@ -14,7 +14,7 @@ This is newly written firmware for the **LAFVIN LA064 ESP32-S3 N16R8 kit**. It u
 - A setup hotspot and recovery path, plus an optional reuse of Wi-Fi credentials already stored by the ESP32 Wi-Fi driver.
 - A short previous-turn chat context, bounded recording/reply buffers, and hardware controls accepted only through explicit parser metadata.
 
-The mouth cycles while audio plays; it is not phoneme lip-sync. Expressions indicate device activity, not an assessment of the user's emotions. There is no always-listening wake word in this implementation.
+The mouth cycles while audio plays; it is not phoneme lip-sync. Expressions indicate device activity, not an assessment of the user's emotions. Optional hands-free mode uses local bridge recognition for “Hello Franky”; see [hands-free and pause](HANDS-FREE.md).
 
 ## Before flashing
 

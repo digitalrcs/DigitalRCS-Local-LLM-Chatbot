@@ -9,6 +9,8 @@ import subprocess
 import tempfile
 import threading
 import wave
+from functools import lru_cache
+from typing import Literal
 
 import requests
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -18,6 +20,7 @@ from settings import load_settings
 from providers import generate_reply, ProviderError
 from device_commands import parse_control
 from voice_settings import VOICES, CATALOG, current_voice, select_voice
+from listening import is_wake, is_pause
 
 ROOT = Path(__file__).resolve().parent
 _settings = load_settings()
@@ -44,8 +47,7 @@ def health():
             "tts_engine": TTS_ENGINE,
             "tts_voice": current_voice() if TTS_ENGINE == "kokoro" else "Windows default"}
 
-@app.post("/v1/audio/transcriptions")
-def transcribe(file: UploadFile = File(...)):
+def recognize(file: UploadFile):
     audio = file.file.read(500_001)
     if len(audio) > 500_000:
         raise HTTPException(413, "Recording exceeds 500 KB")
@@ -61,7 +63,21 @@ def transcribe(file: UploadFile = File(...)):
         segments, _ = recognizer().transcribe(io.BytesIO(audio), language="en",
             beam_size=1, vad_filter=True, condition_on_previous_text=False)
         text = " ".join(s.text.strip() for s in segments).strip()
-    return {"text": text, "control": parse_control(text)}
+    return text
+
+
+@app.post("/v1/audio/transcriptions")
+def transcribe(file: UploadFile = File(...)):
+    text = recognize(file)
+    return {"text": text, "control": parse_control(text), "pause": is_pause(text)}
+
+
+@app.post("/v1/audio/wake")
+def wake(file: UploadFile = File(...)):
+    # Background room speech stays within local recognition. Never return its
+    # transcript or send it to a provider. Only wake/pause phrases are allowed.
+    text = recognize(file)
+    return {"wake": is_wake(text), "pause": is_pause(text)}
 
 @app.get("/")
 def voice_page():
@@ -145,3 +161,25 @@ def speech(body: Speech):
         return Response(synthesize(body.input), media_type="application/octet-stream")
     except (subprocess.SubprocessError, OSError, ValueError) as exc:
         raise HTTPException(500, "Speech synthesis failed; check configured engine and model files") from exc
+
+
+class Cue(BaseModel):
+    kind: Literal['listening', 'thinking', 'paused']
+
+
+@lru_cache(maxsize=36)
+def cached_cue(kind: str, engine: str, voice: str) -> bytes:
+    text = {'listening': "I'm listening.", 'thinking': 'One moment, let me think.',
+            'paused': 'Listening paused. Press the boot button when you need me.'}[kind]
+    if engine == 'kokoro':
+        from neural_voice import synthesize as neural_speech
+        return neural_speech(text, voice=voice)
+    return synthesize_windows(text)
+
+
+@app.post('/v1/audio/cue')
+def cue(body: Cue):
+    try:
+        return Response(cached_cue(body.kind, TTS_ENGINE, current_voice()), media_type='application/octet-stream')
+    except (subprocess.SubprocessError, OSError, ValueError) as exc:
+        raise HTTPException(500, 'Could not prepare the local voice cue') from exc

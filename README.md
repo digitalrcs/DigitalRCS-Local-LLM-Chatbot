@@ -19,6 +19,7 @@ Franky's PC bridge brings together English speech recognition, an LM Studio chat
 | Natural male voices | 11 choices with previews; Liam is the default |
 | Easy Windows launch | Double-click setup, start, and connection check |
 | Volume and brightness commands | Spoken commands, web sliders, persistent levels in new firmware |
+| Hands-free option | Say Hello Franky, pause by voice, resume with BOOT; experimental |
 | Robot firmware | Newly written source, animated frog face, build/flash tools |
 | Optional online providers | OpenAI API, OpenRouter free models, Gemini; bring your own key |
 
