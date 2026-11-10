@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2-preview.1
+
+- Standalone thank-you phrases end the conversation and return to wake-word mode without pausing.
+- Stronger, longer follow-up chime with playback failure reporting.
+- Button-started questions also offer follow-ups when hands-free mode is enabled.
+
 ## 0.3.1-preview.1
 
 - Fifteen-second listening and follow-up windows; longer pauses within questions.

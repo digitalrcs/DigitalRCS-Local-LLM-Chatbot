@@ -4,7 +4,7 @@ from pathlib import Path
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.3.1-preview.1"
+VERSION = "0.3.2-preview.1"
 FILES = [
     "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "SECURITY.md", "CONTRIBUTING.md", "CHANGELOG.md",
     "START-HERE.cmd", "START-FRANKY.cmd", "CHECK-SETUP.cmd",

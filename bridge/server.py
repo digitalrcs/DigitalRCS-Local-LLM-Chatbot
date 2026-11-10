@@ -20,7 +20,7 @@ from settings import load_settings
 from providers import generate_reply, ProviderError
 from device_commands import parse_control
 from voice_settings import VOICES, CATALOG, current_voice, select_voice
-from listening import is_wake, is_pause
+from listening import is_wake, is_pause, is_goodbye
 
 ROOT = Path(__file__).resolve().parent
 _settings = load_settings()
@@ -69,7 +69,7 @@ def recognize(file: UploadFile):
 @app.post("/v1/audio/transcriptions")
 def transcribe(file: UploadFile = File(...)):
     text = recognize(file)
-    return {"text": text, "control": parse_control(text), "pause": is_pause(text)}
+    return {"text": text, "control": parse_control(text), "pause": is_pause(text), "end_conversation": is_goodbye(text)}
 
 
 @app.post("/v1/audio/wake")
@@ -164,15 +164,15 @@ def speech(body: Speech):
 
 
 class Cue(BaseModel):
-    kind: Literal['listening', 'thinking', 'paused']
+    kind: Literal['listening', 'followup', 'thinking', 'paused', 'welcome']
 
 
 @lru_cache(maxsize=36)
 def cached_cue(kind: str, engine: str, voice: str) -> bytes:
-    if kind in {'listening', 'paused'}:
+    if kind in {'listening', 'followup', 'paused'}:
         from chimes import chime
         return chime(kind)
-    text = 'One moment, let me think.'
+    text = "You're welcome." if kind == 'welcome' else 'One moment, let me think.'
     if engine == 'kokoro':
         from neural_voice import synthesize as neural_speech
         return neural_speech(text, voice=voice)

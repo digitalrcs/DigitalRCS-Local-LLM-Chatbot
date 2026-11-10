@@ -18,12 +18,16 @@ Say the wake phrase separately from the question. Recognition pauses while the P
 
 ## Pause and resume
 
+**Finish a conversation without pausing:** say **thank you**, **thanks**, or **thank you, Franky** during a question/follow-up window. He says **You're welcome**, clears that conversation's short context, and goes back to waiting for **Hello Franky**. You do not need BOOT. A longer sentence such as “Thanks, can you explain that?” remains a question.
+
 - While Franky is waiting, say **stop listening**, **pause listening**, or **go to sleep**. These also work as your question after waking him.
 - Or choose **Pause listening** on his device page, including during background listening.
 - The LCD shows **Listening paused**. The pause is saved and survives power cycling.
 - **Press BOOT once to resume.** You can also choose **Resume listening** on the page. With hands-free disabled, the next BOOT hold starts a normal recording.
 
 Pause stops microphone capture. A snippet already sent to the local PC may finish processing, but its result is discarded after cancellation. An answer or voice cue already playing may finish; this is microphone pause, not a speaker mute. Pressing BOOT while powering on still selects ESP32 download mode, so use BOOT only after Franky has started.
+
+The after-answer ready chime is a slightly longer, stronger rising sound than the initial wake chime. It uses the same volume setting. Button-started questions also open follow-up windows when hands-free mode is enabled. If a ready cue fails to download or play, the firmware shows **Ready chime unavailable** instead of silently opening a question window. Serial diagnostics report cue playback results without conversation text.
 
 ## Room noise and distance
 

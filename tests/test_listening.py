@@ -5,7 +5,7 @@ from unittest.mock import patch
 from starlette.datastructures import UploadFile
 from fastapi.testclient import TestClient
 import server
-from listening import is_wake, is_pause
+from listening import is_wake, is_pause, is_goodbye
 
 
 class ListeningTests(unittest.TestCase):
@@ -21,6 +21,26 @@ class ListeningTests(unittest.TestCase):
             self.assertTrue(is_pause(text), text)
         for text in ['', 'go to sleep now', 'stop listen', 'stop listening to music', 'do not stop listening']:
             self.assertFalse(is_pause(text), text)
+
+    def test_thank_you_ends_only_a_standalone_goodbye(self):
+        for text in ['thank you', 'Thanks a lot!', 'Frankie, thank you so much.',
+                     'thank you very much, Franky', 'THANKS FRANKIE', 'Franky, thank you.']:
+            self.assertTrue(is_goodbye(text), text)
+            self.assertFalse(is_pause(text), text)
+        for text in ['', 'thanks, what should I do next?', 'Thank you. Can you repeat that?',
+                     'thank you for the help, but why did it fail?', 'Thanks a lot! How do I reset it?',
+                     'tell me how to say thank you', 'stop listening']:
+            self.assertFalse(is_goodbye(text), text)
+
+    def test_thank_you_metadata_does_not_pause_or_call_provider(self):
+        with patch.object(server, 'recognize', return_value='Thank you, Franky.'), \
+             patch.object(server, 'generate_reply') as provider:
+            response = TestClient(server.app).post('/v1/audio/transcriptions', files={'file': ('test.wav', b'test')})
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.json()['end_conversation'], True)
+        self.assertIs(response.json()['pause'], False)
+        self.assertIsNone(response.json()['control'])
+        provider.assert_not_called()
 
     def test_background_speech_never_reaches_chat_or_control_parser(self):
         with patch.object(server, 'recognize', return_value='set volume to zero'), \
@@ -58,6 +78,7 @@ class ListeningTests(unittest.TestCase):
     def test_chimes_are_short_bounded_and_do_not_use_speech_model(self):
         import numpy as np
         server.cached_cue.cache_clear()
+
         with patch('neural_voice.synthesize') as synth:
             cues = [server.cached_cue(kind, 'kokoro', 'am_liam') for kind in ['listening', 'paused']]
             synth.assert_not_called()
@@ -69,6 +90,23 @@ class ListeningTests(unittest.TestCase):
             self.assertLessEqual(np.max(np.abs(samples)), 11500)
             self.assertEqual(int(samples[0]), 0)
             self.assertTrue(np.all(samples[-240:] == 0))
+        server.cached_cue.cache_clear()
+
+    def test_followup_chime_is_more_audible_and_longer(self):
+        import numpy as np
+        from chimes import chime
+        ready = np.frombuffer(chime('listening'), dtype='<i2').astype(float)
+        followup = np.frombuffer(chime('followup'), dtype='<i2').astype(float)
+        self.assertGreater(len(followup), len(ready))
+        self.assertLess(len(followup), 24000)
+        self.assertGreater(np.sqrt(np.mean(followup**2)), 1.5*np.sqrt(np.mean(ready**2)))
+        self.assertLessEqual(np.max(np.abs(followup)), 16384)
+        self.assertTrue(np.all(followup[-240:] == 0))
+        with patch('neural_voice.synthesize') as synth:
+            response = TestClient(server.app).post('/v1/audio/cue', json={'kind': 'followup'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, chime('followup'))
+        synth.assert_not_called()
         server.cached_cue.cache_clear()
 
 

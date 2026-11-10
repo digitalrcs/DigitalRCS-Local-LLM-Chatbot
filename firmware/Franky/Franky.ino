@@ -38,9 +38,11 @@ void notify(Mood m,const String& text,bool done=false,bool settings=false,int vo
   text.toCharArray(e.text,sizeof(e.text)); xQueueSend(events,&e,portMAX_DELAY);
 }
 
-void playCue(BridgeClient& client,const char* kind,int level) {
+bool playCue(BridgeClient& client,const char* kind,int level) {
   ReplyBuffer cue(480000);
-  if(client.cue(kind,cue))audio.play(cue.data,cue.used,level);
+  bool ok=client.cue(kind,cue)&&audio.play(cue.data,cue.used,level);
+  Serial.printf("Cue %s: %s\n",kind,ok?"played":"failed");
+  return ok;
 }
 
 void voiceTask(void*) {
@@ -66,11 +68,12 @@ void voiceTask(void*) {
         notify(heard?Mood::Idle:Mood::Error,heard?"Say Hello Franky":"Wake service unavailable",true);continue;
       }
       notify(Mood::Listening,"Hello! I'm listening",false,false,0,0,true);
-      playCue(client,"listening",job.volume);
+      if(!playCue(client,"listening",job.volume)){notify(Mood::Error,"Ready chime unavailable",true);continue;}
       if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);continue;}
     }
     if(job.kind==4) {
-      playCue(client,"listening",job.volume);
+      notify(Mood::Happy,"Ready for your next question");
+      if(!playCue(client,"followup",job.volume)){notify(Mood::Error,"Ready chime unavailable",true);continue;}
       if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);continue;}
     }
     if(job.kind==2) {
@@ -112,6 +115,12 @@ void voiceTask(void*) {
         playCue(client,"paused",job.volume);
         notify(Mood::Idle,"Listening paused - BOOT resumes",true);continue;
       }
+      if(transcript["end_conversation"].is<bool>() && transcript["end_conversation"].as<bool>()) {
+        notify(Mood::Speaking,"You're welcome");
+        playCue(client,"welcome",job.volume);
+        previousUser="";previousReply="";
+        notify(Mood::Idle,"Say Hello Franky",true);continue;
+      }
       if(!transcript["text"].is<String>()) { notify(Mood::Error,"Invalid transcription reply",true); continue; }
       String words=transcript["text"].as<String>(); words.trim();
       if(words.length()==0 || words.length()>2000) { notify(Mood::Error,"I didn't catch that",true); continue; }
@@ -147,7 +156,7 @@ void voiceTask(void*) {
     if(!client.speech(answer,pcm)) {notify(Mood::Error,"Voice service unavailable",true);continue;}
     notify(Mood::Speaking,answer);
     ok=audio.play(pcm.data,pcm.used,job.volume);
-    notify(ok?Mood::Happy:Mood::Error,ok?"Ready for another question":"Speaker playback failed",true,false,0,0,false,false,ok&&(job.kind==3||job.kind==4));
+    notify(ok?Mood::Happy:Mood::Error,ok?"Ready for another question":"Speaker playback failed",true,false,0,0,false,false,ok&&(job.kind==1||job.kind==3||job.kind==4));
   }
 }
 
@@ -190,7 +199,7 @@ void routes() {
   const char* headers[]={"X-Franky-Token"};web.collectHeaders(headers,1);
   web.on("/",HTTP_GET,[]{web.sendHeader("Cache-Control","no-store");web.send_P(200,"text/html",setupPage);});
   web.on("/status",HTTP_GET,[]{
-    JsonDocument d;d["version"]="0.3.1-dev";d["state"]=state;d["busy"]=busy;d["audio"]=audioReady;d["connected"]=WiFi.status()==WL_CONNECTED;
+    JsonDocument d;d["version"]="0.3.2-dev";d["state"]=state;d["busy"]=busy;d["audio"]=audioReady;d["connected"]=WiFi.status()==WL_CONNECTED;
     d["ssid"]=ssid;d["bridge"]=bridge;d["volume"]=volume;d["brightness"]=brightness;d["token"]=csrf;d["text"]=lastText;
     d["hands_free"]=handsFree;d["paused"]=paused;d["wake_monitoring"]=wakeMonitoring;d["wake_threshold"]=wakeThreshold;
     d["ip"]=WiFi.localIP().toString();d["psram_free"]=ESP.getFreePsram();jsonReply(200,d);
@@ -233,13 +242,13 @@ void routes() {
   web.on("/test-sound",HTTP_POST,[]{
     if(!authorized())return;if(!audioReady){errorReply(503,"Audio hardware unavailable");return;}startJob(2);JsonDocument d;d["ok"]=busy;jsonReply(busy?202:503,d);
   });
-  web.on("/about",HTTP_GET,[]{web.send(200,"text/plain","Franky firmware 0.3.1-dev\nCopyright 2026 DigitalRCS. Original application and artwork: MIT.\nCodec drivers: Espressif, Apache-2.0. Display: Adafruit BSD. Arduino core and other dependencies retain their licenses.\nNo warranty. Source and full notices: https://github.com/digitalrcs/DigitalRCS-Local-LLM-Chatbot\n");});
+  web.on("/about",HTTP_GET,[]{web.send(200,"text/plain","Franky firmware 0.3.2-dev\nCopyright 2026 DigitalRCS. Original application and artwork: MIT.\nCodec drivers: Espressif, Apache-2.0. Display: Adafruit BSD. Arduino core and other dependencies retain their licenses.\nNo warranty. Source and full notices: https://github.com/digitalrcs/DigitalRCS-Local-LLM-Chatbot\n");});
   web.onNotFound([]{if(ap){web.sendHeader("Location","http://192.168.4.1");web.send(302,"text/plain","");}else errorReply(404,"Not found");});
   web.begin();
 }
 
 void setup() {
-  Serial.begin(115200);delay(300);Serial.println("DigitalRCS Franky independent firmware 0.3.1-dev");
+  Serial.begin(115200);delay(300);Serial.println("DigitalRCS Franky independent firmware 0.3.2-dev");
   pinMode(Board::talk,INPUT_PULLUP);pinMode(Board::pageUp,INPUT_PULLUP);pinMode(Board::pageDown,INPUT_PULLUP);
   prefs.begin("franky2",false);
   ssid=prefs.getString("ssid","");password=prefs.getString("pass","");bridge=prefs.getString("bridge","");
@@ -305,7 +314,7 @@ void loop() {
   if(!busy&&!ap&&mood==Mood::Happy&&millis()-lastInteraction>1800){mood=Mood::Idle;state="Hold BOOT to talk";}
   if(!busy&&!ap&&mood==Mood::Error&&millis()-lastInteraction>10000&&audioReady){mood=Mood::Idle;state="Hold BOOT to retry";}
   if(paused){state="Listening paused";statusDetail="Press BOOT to resume";mood=Mood::Idle;}
-  else if(handsFree&&!ap&&(!busy||wakeMonitoring)){state="Say Hello Franky";statusDetail="Wait for the chime, then ask";mood=Mood::Idle;}
+  else if(handsFree&&!ap&&mood!=Mood::Error&&(!busy||wakeMonitoring)){state="Say Hello Franky";statusDetail="Wait for the chime, then ask";mood=Mood::Idle;}
   if(handsFree&&!paused&&!busy&&!ap&&connected&&greeted&&int32_t(millis()-nextListenAt)>=0){
     uint8_t kind=followUpReady?4:3;followUpReady=false;startJob(kind);
   }
