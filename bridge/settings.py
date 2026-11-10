@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 from urllib.parse import urlsplit
+from provider_config import resolve_provider, validate_model
 CONFIG = Path(__file__).resolve().parent / "config.json"
 
 def validate_url(value):
@@ -28,12 +29,17 @@ def load_settings(path=CONFIG):
     model = os.environ.get("LM_STUDIO_MODEL", data.get("lm_studio_model", ""))
     if not isinstance(model, str):
         raise ValueError("Model name must be text")
-    return {"lm_studio_url": url, "lm_studio_model": model.strip()}
+    return resolve_provider(data, {"lm_studio_url": url, "lm_studio_model": model.strip()})
 
-def save_settings(url, model, path=CONFIG):
+def save_settings(url, model, path=CONFIG, provider="lmstudio"):
     if not isinstance(model, str) or not model.strip():
         raise ValueError("Choose a loaded chat model")
-    data = {"lm_studio_url": validate_url(url), "lm_studio_model": model.strip()}
+    validate_model(provider, model)
+    old = load_settings(path)
+    data = {"provider": provider, "model": model.strip(), "max_output_tokens": old["max_output_tokens"],
+            "lm_studio_url": old["lm_studio_url"], "lm_studio_model": old["lm_studio_model"]}
+    if provider == "lmstudio":
+        data.update(lm_studio_url=validate_url(url), lm_studio_model=model.strip())
     temporary = path.with_suffix(".json.tmp")
     temporary.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     temporary.replace(path)

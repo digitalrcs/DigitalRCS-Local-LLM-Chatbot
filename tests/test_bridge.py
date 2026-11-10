@@ -23,7 +23,7 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(e.exception.status_code, 400)
 
     def reply(self, content):
-        response = Mock()
+        response = Mock(status_code=200)
         response.json.return_value = {'choices': [{'message': {'content': content}}]}
         with patch.object(server, "LM_MODEL", "test-model"), patch.object(server.requests, 'post', return_value=response):
             return server.chat(server.Chat(messages=[server.Message(role='user', content='Hello')]))

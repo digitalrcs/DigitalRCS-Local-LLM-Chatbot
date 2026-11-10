@@ -1,0 +1,83 @@
+{
+  "repository": "https://github.com/espressif/esp-adf",
+  "commit": "74e6be93f007faa411dab985a2b7613725506790",
+  "component": "esp_codec_dev",
+  "license": "Apache-2.0",
+  "files": [
+    {
+      "upstream_path": "device/es8311/es8311.c",
+      "local_path": "src/codec/es8311.c",
+      "sha256": "f1634906d62262555f4575243e8c2ffa4fa0e1e3a977e640a51d8235d3cba1f0"
+    },
+    {
+      "upstream_path": "device/es8311/es8311_reg.h",
+      "local_path": "src/codec/es8311_reg.h",
+      "sha256": "a65d5cdc26413ad4cba4250f64ad92e4ab9f37e9c8829a3eb17a57711cdb87ed"
+    },
+    {
+      "upstream_path": "device/es7210/es7210.c",
+      "local_path": "src/codec/es7210.c",
+      "sha256": "8c741993683579ffbffd05a227533f4a54d086921de8ed99ff6c12f6574d5921"
+    },
+    {
+      "upstream_path": "device/es7210/es7210_reg.h",
+      "local_path": "src/codec/es7210_reg.h",
+      "sha256": "12b2a719e5feefa248e239c8368227dde8fd0a60c7f055eca60e800fc7371dcc"
+    },
+    {
+      "upstream_path": "esp_codec_dev_vol.c",
+      "local_path": "src/codec/esp_codec_dev_vol.c",
+      "sha256": "3ec591e1757b331832c2b68c267bc18d0c6edc8b2a6933184c16935ca9ba102c"
+    },
+    {
+      "upstream_path": "device/priv_include/es_common.h",
+      "local_path": "src/codec/es_common.h",
+      "sha256": "bbc2d51cbb01d2a2e8d0430252a2fad40a0d1813c0b7bca9765ea2364bc3eb46"
+    },
+    {
+      "upstream_path": "device/include/es8311_codec.h",
+      "local_path": "src/codec/es8311_codec.h",
+      "sha256": "e10f30ab57a2bb6b46d257a7ccba9726b61e1f201182eec2c71731e837db3dca"
+    },
+    {
+      "upstream_path": "device/include/es7210_adc.h",
+      "local_path": "src/codec/es7210_adc.h",
+      "sha256": "1bb47ab66891f094c5adbfd3478f785d7b258cd678414e63fb433063623450a1"
+    },
+    {
+      "upstream_path": "include/esp_codec_dev_types.h",
+      "local_path": "src/codec/esp_codec_dev_types.h",
+      "sha256": "182e02a3fe868bcfdf881d4e6b64c6d6f0fbfb75c55e7892960ef722994f4088"
+    },
+    {
+      "upstream_path": "include/esp_codec_dev_vol.h",
+      "local_path": "src/codec/esp_codec_dev_vol.h",
+      "sha256": "2ee723bc80dc9cc3478eeaf6920fbce2dc707dfef33d9b4deb2d9175d702c572"
+    },
+    {
+      "upstream_path": "include/esp_codec_dev_defaults.h",
+      "local_path": "src/codec/esp_codec_dev_defaults.h",
+      "sha256": "557b5344d75bef364bebc68ad2450c01da2020823735154b9bbc5b10dbeaff0c"
+    },
+    {
+      "upstream_path": "interface/audio_codec_if.h",
+      "local_path": "src/codec/audio_codec_if.h",
+      "sha256": "3b2a798b8e9df3a19bc327a0b7f619bdc902aa99da16519a7f7b586aadb59443"
+    },
+    {
+      "upstream_path": "interface/audio_codec_ctrl_if.h",
+      "local_path": "src/codec/audio_codec_ctrl_if.h",
+      "sha256": "b985f54597b01afd2633b3df843a47d718a722784ebb9bbe76ece9fb1de7c3d4"
+    },
+    {
+      "upstream_path": "interface/audio_codec_gpio_if.h",
+      "local_path": "src/codec/audio_codec_gpio_if.h",
+      "sha256": "a4e0ccb45810ccbd3c1d7719b0c9f8bb9cf19c31c3f1cff4a8c4910d292feda9"
+    },
+    {
+      "upstream_path": "interface/audio_codec_data_if.h",
+      "local_path": "src/codec/audio_codec_data_if.h",
+      "sha256": "3a9a63e4c8f49fa8624f16e835cf8d8cb88d8a6ea5b8028cd24d55ad15468459"
+    }
+  ]
+}

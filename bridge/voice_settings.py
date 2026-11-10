@@ -16,9 +16,9 @@ SETTINGS_FILE = Path(__file__).resolve().parent / "voice_settings.json"
 _lock = threading.Lock()
 
 def load_voice():
-    fallback = os.environ.get("KOKORO_VOICE", "am_michael")
+    fallback = os.environ.get("KOKORO_VOICE", "am_liam")
     if fallback not in CATALOG:
-        fallback = "am_michael"
+        fallback = "am_liam"
     try:
         value = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))["voice"]
         return value if value in CATALOG else fallback

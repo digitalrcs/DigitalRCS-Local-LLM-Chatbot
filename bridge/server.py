@@ -1,6 +1,6 @@
 """LAN voice bridge: English Whisper + LM Studio + local Kokoro speech.
 
-No OpenAI cloud calls. Configure LM_STUDIO_URL and LM_STUDIO_MODEL via environment.
+LM Studio by default; optional cloud providers are selected explicitly on the PC.
 """
 import io
 import os
@@ -15,13 +15,14 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import Response, FileResponse
 from pydantic import BaseModel, Field
 from settings import load_settings
+from providers import generate_reply, ProviderError
 from device_commands import parse_control
 from voice_settings import VOICES, CATALOG, current_voice, select_voice
 
 ROOT = Path(__file__).resolve().parent
 _settings = load_settings()
-LM_URL = _settings["lm_studio_url"]
-LM_MODEL = _settings["lm_studio_model"]
+LM_URL = _settings["base_url"]
+LM_MODEL = _settings["model"]
 STT_MODEL = os.environ.get("WHISPER_MODEL", "base.en")
 TTS_ENGINE = os.environ.get("TTS_ENGINE", "kokoro")
 app = FastAPI(title="DigitalRCS Local LLM Chatbot")
@@ -38,7 +39,7 @@ def recognizer():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "lm_studio_url": LM_URL, "model": LM_MODEL,
+    return {"status": "ok", "provider": _settings["provider"], "provider_url": LM_URL, "model": LM_MODEL,
             "speech_model": STT_MODEL, "speech_loaded": _whisper is not None,
             "tts_engine": TTS_ENGINE,
             "tts_voice": current_voice() if TTS_ENGINE == "kokoro" else "Windows default"}
@@ -68,7 +69,7 @@ def voice_page():
 
 @app.get("/voices")
 def voices():
-    return {"voices": VOICES, "selected": current_voice(), "engine": TTS_ENGINE}
+    return {"voices": VOICES, "selected": current_voice(), "engine": TTS_ENGINE, "provider": _settings["provider"], "model": LM_MODEL}
 
 class VoiceChoice(BaseModel):
     voice: str
@@ -102,29 +103,14 @@ class Chat(BaseModel):
 
 @app.post("/v1/chat/completions")
 def chat(body: Chat):
-    if not LM_MODEL:
-        raise HTTPException(503, "Run START-HERE to select an LM Studio chat model")
-    payload = {"model": LM_MODEL, "messages": [m.model_dump() for m in body.messages],
-               "stream": False, "max_tokens": 400}
-    headers = {}
-    if os.environ.get("LM_STUDIO_TOKEN"):
-        headers["Authorization"] = "Bearer " + os.environ["LM_STUDIO_TOKEN"]
+    config = {**_settings, "base_url": LM_URL, "model": LM_MODEL}
     try:
-        response = requests.post(LM_URL + "/chat/completions", json=payload,
-                                 headers=headers, timeout=(5, 50))
-        response.raise_for_status()
-        data = response.json()
-        text = data["choices"][0]["message"]["content"]
-        if not isinstance(text, str) or not text.strip():
-            raise ValueError("Empty model reply")
-        # Do not speak chain-of-thought emitted by some local models.
-        if "</think>" in text:
-            text = text.split("</think>")[-1].strip()
-        if "<think>" in text or not text:
-            raise ValueError("Model did not return a final answer")
+        text = generate_reply(config, [m.model_dump() for m in body.messages])
         return {"choices": [{"message": {"role": "assistant", "content": text}}]}
+    except ProviderError as exc:
+        raise HTTPException(502, str(exc)) from exc
     except (requests.RequestException, ValueError, KeyError, IndexError, TypeError) as exc:
-        raise HTTPException(502, "LM Studio unavailable or invalid reply; check server and model") from exc
+        raise HTTPException(502, "Provider unavailable or invalid reply; check local provider settings") from exc
 
 class Speech(BaseModel):
     input: str = Field(min_length=1, max_length=1800)

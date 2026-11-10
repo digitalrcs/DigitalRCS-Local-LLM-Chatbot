@@ -34,6 +34,7 @@ class SettingsTests(unittest.TestCase):
 
     def test_lists_exact_model_identifiers(self):
         with patch("configure.requests.get") as get:
+            get.return_value.status_code = 200
             get.return_value.json.return_value = {"data": [{"id": "my/exact-model"}, {"id": 42}]}
             self.assertEqual(available_models("http://localhost:1234/v1"), ["my/exact-model"])
 

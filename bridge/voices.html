@@ -6,6 +6,7 @@
 </style></head><body><main>
 <div class="muted">DigitalRCS · Franky</div><h1>Find Franky's voice</h1>
 <p class="muted">Listen first, then pick your favorite. Every voice runs locally on your PC.</p>
+<p id="provider" class="muted"></p>
 <section><p id="current" role="status">Loading current voice…</p>
 <label for="voice">Male voice</label><select id="voice" disabled></select>
 <div class="row"><button id="preview" disabled>Listen to preview</button><button id="save" class="primary" disabled>Use this voice</button></div>
@@ -15,7 +16,7 @@
 </main><script>
 const $=id=>document.getElementById(id);let voices=[],blobUrl;
 function label(id){return voices.find(v=>v.id===id)?.name||id}
-async function load(){try{const r=await fetch('/voices');if(!r.ok)throw Error('Cannot load voices');const d=await r.json();voices=d.voices;for(const v of voices)$('voice').add(new Option(v.name,v.id));$('voice').value=d.selected;$('current').textContent='Current voice: '+label(d.selected);if(d.engine!=='kokoro')throw Error('The bridge must use Kokoro to apply these choices.');$('voice').disabled=$('preview').disabled=$('save').disabled=false}catch(e){$('message').textContent=e.message}}
+async function load(){try{const r=await fetch('/voices');if(!r.ok)throw Error('Cannot load voices');const d=await r.json();voices=d.voices;$('provider').textContent='AI provider: '+(d.provider||'lmstudio')+'. Change it with CHANGE-PROVIDER on your PC.';for(const v of voices)$('voice').add(new Option(v.name,v.id));$('voice').value=d.selected;$('current').textContent='Current voice: '+label(d.selected);if(d.engine!=='kokoro')throw Error('The bridge must use Kokoro to apply these choices.');$('voice').disabled=$('preview').disabled=$('save').disabled=false}catch(e){$('message').textContent=e.message}}
 $('preview').onclick=async()=>{const previewVoice=$('voice').value;$('preview').disabled=true;$('message').textContent='Generating your preview…';try{const r=await fetch('/voice/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({voice:previewVoice})});if(!r.ok)throw Error('Could not generate preview. Please try again.');const blob=await r.blob();if(blobUrl)URL.revokeObjectURL(blobUrl);blobUrl=URL.createObjectURL(blob);$('audio').src=blobUrl;$('audio').hidden=false;try{await $('audio').play()}catch(e){}$('message').textContent='Preview ready: '+label(previewVoice)+'. Use the audio controls to listen again.'}catch(e){$('message').textContent=e.message}finally{$('preview').disabled=false}};
 $('save').onclick=async()=>{$('save').disabled=true;try{const r=await fetch('/voice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({voice:$('voice').value})});if(!r.ok)throw Error('Voice could not be saved.');const d=await r.json();$('current').textContent='Current voice: '+label(d.selected);$('message').textContent='Saved. Franky will use '+label(d.selected)+' next time he speaks.'}catch(e){$('message').textContent=e.message}finally{$('save').disabled=false}};load();
 </script></body></html>

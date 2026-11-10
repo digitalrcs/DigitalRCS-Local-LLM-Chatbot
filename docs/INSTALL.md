@@ -2,7 +2,7 @@
 
 This guide is for someone who has never installed a programming project. Follow the steps in order. You can stop after trying the voices on your computer.
 
-**What this download does:** installs the PC voice bridge and voice picker. **What it does not do yet:** replace the software inside a factory LAFVIN robot. Firmware redistribution permission is still being clarified. Do not erase or flash your robot using this preview.
+**Start with the PC bridge and voice picker using this guide.** To replace the software inside a LAFVIN LA064 kit, follow the separate [firmware build and setup guide](FIRMWARE.md). New firmware source is included; it is a development preview and is separate from the earlier XiaoKe adaptation.
 
 ## 1. Get ready
 
@@ -44,7 +44,7 @@ There are two roles: the **bridge computer** runs this download; the **LM Studio
 
 1. Double-click **START-HERE.cmd**.
 2. Wait while the setup window installs the bridge's required software. This can take several minutes.
-3. Enter the LM Studio address. If both programs are on this PC, press **Enter** to accept the displayed default.
+3. At the provider choice, press **Enter** for LM Studio. Then enter the LM Studio address. If both programs are on this PC, press **Enter** to accept the displayed default.
 4. Choose the number beside your chat model. The wizard saves that choice for you.
 5. Wait for the voice and English recognition downloads. The Kokoro files alone are about 354 MB. A slow connection may take longer.
 6. Look for **Setup complete**. Then press a key to close the window.
@@ -59,25 +59,21 @@ If you see an error, read it before closing. Running setup again retries install
 4. Choose a voice, then click **Listen to preview**. The first preview may take longer while the speech model loads.
 5. When you find a voice you like, click **Use this voice**. A preview by itself does not save the selection.
 
-**Success looks like:** the voice page opens, a preview plays, and your saved voice is still selected after refreshing the page. Michael is the default. Try the other American and British voices to compare.
+**Success looks like:** the voice page opens, a preview plays, and your saved voice is still selected after refreshing the page. Liam is the default. Try the other American and British voices to compare.
 
-This page previews speech; it is not a microphone chat interface. Full spoken robot conversation needs compatible firmware, which is not part of this public preview.
+This page previews speech; it is not a microphone chat interface. Full spoken robot conversation needs the [new Franky firmware](FIRMWARE.md). The PC installation alone does not update your robot.
 
 ## 6. Check the connection
 
-With the bridge and LM Studio running, double-click **CHECK-SETUP.cmd**. It checks that LM Studio lists the selected model and the bridge responds. It also lists possible bridge addresses for other devices on your network. A listed address may belong to a VPN or virtual adapter, so use your home Wi-Fi or Ethernet address.
+With the bridge and your selected provider ready, double-click **CHECK-SETUP.cmd**. It checks that the provider lists the selected model and the bridge responds. It also lists possible bridge addresses for other devices on your network. A listed address may belong to a VPN or virtual adapter, so use your home Wi-Fi or Ethernet address.
 
 A successful check does not guarantee that the model can generate a reply or that robot audio works. It helps locate basic connection problems.
 
-## 7. Using an already-configured development robot
+## 7. Connect the robot or select an online provider
 
-This section is only for someone who already has compatible DigitalRCS development firmware. A factory robot cannot follow it without a future compatible firmware release.
+For the LAFVIN LA064 kit, follow [FIRMWARE.md](FIRMWARE.md). It covers the new frog face, USB build/flash tools, DigitalRCS setup Wi-Fi, and the bridge address. Keep a private backup before replacing existing firmware.
 
-Set the robot's voice bridge address to `http://YOUR-BRIDGE-PC-ADDRESS:8766`. This is the **bridge PC address**, not the LM Studio address. Never use `localhost` or `127.0.0.1` on the robot: those would point back to the robot.
-
-The existing development firmware uses the `DigitalRCS` setup hotspot with password `11181118`. Its setup page is `http://192.168.4.1` while connected to that hotspot. Choose your home **2.4 GHz** Wi-Fi and enter the bridge address. Enter your Wi-Fi password only on your own robot's setup page, never in a GitHub issue. These are development-firmware details, not factory LAFVIN settings.
-
-If Windows blocks the robot, have the computer owner review the optional `scripts/allow-lan.ps1` script and run it from an Administrator PowerShell. It opens port 8766 only to the local subnet on Private networks. Do not disable the firewall or open a router port. See [troubleshooting](TROUBLESHOOTING.md).
+LM Studio stays the default. To choose OpenAI, OpenRouter free models, or Gemini, use **CHANGE-PROVIDER.cmd** and the [provider guide](PROVIDERS.md). Keys are entered privately on the PC. No keys belong in the robot firmware or GitHub repository.
 
 ## Everyday use
 

@@ -1,0 +1,52 @@
+# Choose where Franky gets his answers
+
+**LM Studio is the default.** Franky never automatically switches providers. Liam's voice and English speech recognition run on the bridge PC for every option below.
+
+| Choice | Where text goes | What you need | Cost/availability |
+| --- | --- | --- | --- |
+| LM Studio | Your own PC or home-network server | LM Studio and a loaded chat model | No online inference bill; requires suitable hardware |
+| OpenAI API | OpenAI | An API account, key, and supported text model | Metered API usage; check your account's credits and limits |
+| OpenRouter free models | OpenRouter and its selected model provider | OpenRouter account/key | Only `openrouter/free` or `:free` model IDs accepted; availability and rate limits vary |
+| Gemini | Google | Gemini API key and eligible model/account | Some models/accounts have a free tier; paid usage is possible depending on your account and selection |
+
+Online mode sends the transcribed conversation and recent context outside your home network. It does not upload microphone recordings through this chat integration. Provider data policies still apply. Local mode remains available without any cloud key.
+
+## Change provider
+
+1. Stop the bridge with **Ctrl+C** in its running window.
+2. Double-click **CHANGE-PROVIDER.cmd**.
+3. Choose a provider. Pressing Enter selects **LM Studio**.
+4. For an online provider, read the privacy/cost message and confirm your choice.
+5. Enter your API key into the **local setup window** when prompted. The characters are hidden. Never paste keys into a chat, GitHub issue, or robot setup page.
+6. If you choose to save the key, Windows protects it for your current Windows account in `bridge/.secrets`. This folder is excluded from Git and release packages. Environment variables, if configured, take precedence.
+7. Choose a **text chat model** from the returned model list. Some providers also list image, audio, embedding, or other models; a listed ID alone does not mean it supports this chat interface.
+8. Start **START-FRANKY.cmd** again. Use **CHECK-SETUP.cmd** to check the selected provider and model listing.
+
+No cloud key is bundled with this project. A key is not required to finish installing the local LM Studio setup. To return to local processing, rerun CHANGE-PROVIDER and choose option 1; the saved local address and model remain available.
+
+## Free online choices
+
+OpenRouter's [`openrouter/free` router](https://openrouter.ai/docs/guides/routing/routers/free-router) selects an available free model. That can mean different models answer different requests. Alternatively, select a specific model whose ID ends in `:free`. This application rejects other OpenRouter model IDs and has no paid fallback. Free requests can still fail because of capacity, quotas, or account restrictions; see [OpenRouter limits](https://openrouter.ai/docs/api_reference/limits).
+
+Gemini's [pricing page](https://ai.google.dev/gemini-api/docs/pricing) distinguishes free and paid tiers. Check the selected model and account before use. This application cannot independently guarantee that a Gemini request is free. Google's free-tier data terms may differ from paid-tier terms.
+
+Local LM Studio is the option for keeping conversation text on your own machines and avoiding online service quotas.
+
+## OpenAI details
+
+The OpenAI option uses the [Responses API](https://developers.openai.com/api/docs/guides/text), with `store: false`, and reads assistant text separately from reasoning items. This option uses an OpenAI API key; it does not sign into the ChatGPT website. Review the API account's billing and credit status before use.
+
+OpenAI requests go only to the fixed official HTTPS endpoint. OpenRouter and Gemini likewise use fixed HTTPS endpoints. Redirects are not followed when sending credentials. There is no automatic retry on a different provider or paid model.
+
+Cloud adapters are tested using simulated provider responses. Live OpenAI, Gemini, and authenticated OpenRouter generation require your own keys and are not claimed as verified merely because unit tests pass.
+
+## Keys, moving PCs, and troubleshooting
+
+- If a key was exposed, revoke it at the provider and enter a replacement locally.
+- Windows-protected keys cannot simply be copied to another PC/account. Enter them again after moving the project.
+- You can instead configure `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, or `LM_STUDIO_TOKEN` in the bridge process environment. Do not commit them.
+- A 401/403 error means the key, account, or model access needs attention. A 429 means wait for the provider's quota/capacity to recover. No paid fallback is attempted.
+- `CHAT_PROVIDER` and `CHAT_MODEL` environment variables override saved selection. Remove those overrides if the setup wizard appears not to change the running provider.
+- `max_output_tokens` in `bridge/config.json` defaults to 1200 and accepts 128–4096. Reasoning models can spend part of that budget before returning spoken text; an incomplete response is rejected rather than read aloud.
+
+The bridge is still a trusted-home-network service without a login. Anyone who can reach it may consume the selected provider's quota or credits. Do not expose port 8766 to the Internet.

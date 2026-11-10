@@ -1,0 +1,2 @@
+# Preserve upstream codec bytes and recorded hashes on every platform.
+firmware/Franky/src/codec/* -text

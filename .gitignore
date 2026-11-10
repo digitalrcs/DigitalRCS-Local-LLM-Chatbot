@@ -8,3 +8,9 @@ __pycache__/
 *.log
 .env
 /dist/
+/.firmware-deps/
+/.arduino-user/
+/build-firmware/
+/private-backups/
+
+/bridge/.secrets/

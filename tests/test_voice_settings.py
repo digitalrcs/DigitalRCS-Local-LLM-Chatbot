@@ -1,4 +1,5 @@
 import io
+import os
 import tempfile
 import unittest
 import wave
@@ -8,6 +9,12 @@ import voice_settings as settings
 import server
 
 class VoiceSettingsTests(unittest.TestCase):
+    def test_new_install_and_invalid_override_default_to_liam(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(settings, 'SETTINGS_FILE', Path(tmp) / 'voice.json'), patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(settings.load_voice(), 'am_liam')
+            with patch.dict(os.environ, {'KOKORO_VOICE': 'invalid'}):
+                self.assertEqual(settings.load_voice(), 'am_liam')
+
     def test_selection_persists_and_invalid_choice_is_rejected(self):
         original = settings.current_voice()
         try:

@@ -13,7 +13,7 @@ Start with **CHECK-SETUP.cmd** while both programs are open. Read the error text
 | Voice preview fails | Run START-HERE to finish voice downloads; check the bridge window for errors. |
 | Saved voice did not change | Click **Use this voice**; preview alone does not select it. |
 | Phone cannot open the bridge | Use the bridge PC's home-network address, not localhost. Check both devices share a reachable network and Windows permits Private-network traffic. |
-| Robot says setup mode | Development firmware needs Wi-Fi and a bridge URL. Factory firmware is not supported by this preview. |
+| Robot says setup mode | Development firmware needs Wi-Fi and a bridge URL. See FIRMWARE.md for the new firmware; factory firmware is not changed by the PC setup. |
 | Answers stop when PC sleeps | Keep the bridge and LM Studio PCs awake while using Franky. |
 | Speech sounds odd | Try another voice; speech quality varies with text, names, punctuation, and accent. |
 
@@ -38,3 +38,5 @@ Remove-NetFirewallRule -Name DigitalRCS-Local-LLM-Chatbot
 ## Asking for help
 
 Open a GitHub issue with your Windows version, Python version, release version, the step that failed, and the error message. Remove passwords, tokens, personal paths, and recordings before posting. Never upload full robot flash backups: they may contain saved Wi-Fi settings.
+
+For online provider keys, quotas, and free-tier limitations, see [PROVIDERS.md](PROVIDERS.md). LM Studio remains the default and errors never cause an automatic paid fallback.
