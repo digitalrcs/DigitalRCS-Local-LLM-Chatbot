@@ -11,6 +11,7 @@ The project previously developed a separate XiaoKe-based prototype. That history
 - The documented DigitalRCS PC bridge request/response contract in `docs/ARCHITECTURE.md`.
 - Arduino-ESP32's public Wi-Fi, I2S, GPIO/PWM, Preferences, and HTTP APIs.
 - Espressif's licensed ES8311 and ES7210 codec interfaces and drivers.
+- ES7210 address-select range (0x40–0x43) documented in [Espressif's ES7210 interface](https://github.com/espressif/esp-bsp/blob/master/components/es7210/include/es7210.h). The application probes this range to accommodate module wiring.
 
 ## Included third-party code
 

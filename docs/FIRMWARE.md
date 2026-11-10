@@ -33,7 +33,7 @@ Use a USB **data** cable. Do not select a different ESP32 board or erase all fla
    ```
 
 4. The first run downloads the pinned ESP32 board package and display/JSON libraries. Later builds can omit `-Install`.
-5. Wait for **Firmware built**. Files appear in `build-firmware`. Building alone does not change your robot.
+5. Wait for **Firmware built**. A first build may take 10–20 minutes on some PCs. Files appear in `build-firmware`. Building alone does not change your robot.
 
 The current build uses Arduino-ESP32 **4.0.0-alpha1**, explicitly pinned to the development environment. Treat it as a preview, not a stable-core compatibility claim. The script limits parallel compilation to four jobs to reduce memory pressure.
 
@@ -45,7 +45,7 @@ Close any serial monitor first. Find the kit's COM port in Arduino IDE or Window
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\flash-firmware.ps1 -Port COM9
 ```
 
-This replaces the application, bootloader, and partition information using the pinned board definition. It does not request a full-flash erase. The new application uses its own `franky2` settings namespace; the old application's settings are not deleted or imported. The ESP32 platform's saved Wi-Fi connection may be reusable, but that is not guaranteed.
+The script uploads at 115200 baud for broad USB reliability; allow a couple of minutes. This replaces the application, bootloader, and partition information using the pinned board definition. It does not request a full-flash erase. The new application uses its own `franky2` settings namespace; the old application's settings are not deleted or imported. The ESP32 platform's saved Wi-Fi connection may be reusable, but that is not guaranteed.
 
 ## Connect Franky
 

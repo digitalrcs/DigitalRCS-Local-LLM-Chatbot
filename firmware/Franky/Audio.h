@@ -36,7 +36,16 @@ public:
   bool begin() {
     pinMode(Board::amplifier,OUTPUT); digitalWrite(Board::amplifier,LOW);
     if (!Wire.begin(Board::sda,Board::scl,100000)) return false;
-    busInit(dacBus,ES8311_CODEC_DEFAULT_ADDR>>1); busInit(adcBus,ES7210_CODEC_DEFAULT_ADDR>>1);
+    // ES7210 has two address-select pins. LA064 module revisions may use
+    // any of its four 7-bit addresses; probe only that documented range.
+    uint8_t adcAddress=0;
+    for(uint8_t address=0x40;address<=0x43;address++) {
+      Wire.beginTransmission(address);
+      if(Wire.endTransmission()==0) { adcAddress=address;break; }
+    }
+    if(!adcAddress) { Serial.println("No ES7210 found at 0x40-0x43");return false; }
+    Serial.printf("ES7210 found at 0x%02x\n",adcAddress);
+    busInit(dacBus,ES8311_CODEC_DEFAULT_ADDR>>1); busInit(adcBus,adcAddress);
     es8311_codec_cfg_t d{}; d.ctrl_if=&dacBus.api; d.codec_mode=ESP_CODEC_DEV_WORK_MODE_DAC;
     d.pa_pin=-1; d.use_mclk=true; d.no_dac_ref=true; d.mclk_div=256;
     es7210_codec_cfg_t a{}; a.ctrl_if=&adcBus.api; a.mic_selected=ES7210_SEL_MIC1|ES7210_SEL_MIC2; a.mclk_div=256;
