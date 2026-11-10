@@ -9,7 +9,7 @@ if (-not (Test-Path -LiteralPath $Cli)) {
 }
 New-Item -ItemType Directory -Force '.arduino-user' | Out-Null
 $config = Join-Path $root '.arduino-user/cli.json'
-@{ directories = @{ user = (Join-Path $root '.arduino-user') }; board_manager = @{ additional_urls = @('https://espressif.github.io/arduino-esp32/package_esp32_index.json') } } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 $config
+@{ directories = @{ user = (Join-Path $root '.arduino-user') }; board_manager = @{ additional_urls = @('https://espressif.github.io/arduino-esp32/package_esp32_dev_index.json') } } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 $config
 function Run-Cli([string[]]$Arguments) {
     & $Cli --config-file $config @Arguments
     if ($LASTEXITCODE) { throw 'Arduino command failed. Read the error above.' }
