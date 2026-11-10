@@ -1,0 +1,10 @@
+/.venv/
+/bridge/models/
+/bridge/config.json
+/bridge/config.json.tmp
+/bridge/voice_settings.json*
+__pycache__/
+*.pyc
+*.log
+.env
+/dist/
