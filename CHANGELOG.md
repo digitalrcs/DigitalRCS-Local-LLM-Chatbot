@@ -2,7 +2,7 @@
 
 ## 0.3.3-preview.3
 
-- Expanded Windows setup and AI-server instructions with the X64 C++ runtime prerequisite, automatic voice/recognition downloads, eSpeak troubleshooting, and required voice-preview verification. Documentation update; bridge and firmware behavior are unchanged.
+- Expanded Windows setup and AI-server instructions with recovery for unfinished Kokoro `.part` downloads, the exact retry command, the X64 C++ runtime prerequisite, eSpeak troubleshooting, and required voice-preview verification. Documentation update; bridge and firmware behavior are unchanged.
 
 ## 0.3.3-preview.2
 
