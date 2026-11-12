@@ -19,6 +19,7 @@ This worked example uses **192.168.5.250** as the AI server's home-network addre
 1. Download the **Windows ZIP** from the [GitHub releases](https://github.com/digitalrcs/DigitalRCS-Local-LLM-Chatbot/releases). Use version **0.3.3-preview.1 or newer** for these instructions.
 2. Copy the ZIP to the AI server, then use **Extract All**. Put the extracted program in a permanent writable folder, for example `C:\Apps\Franky`. That folder should contain `START-HERE.cmd`, `START-FRANKY.cmd`, and `SET-BRIDGE-ADDRESS.cmd` directly.
 3. Install **64-bit Python 3.13**, including the Python launcher, if it is not already present. The bridge's primary Windows setup target is Python 3.13 on x64.
+4. Install or repair the **Microsoft Visual C++ v14 Redistributable, X64, on the AI server**. Follow [Windows voice software and downloads](VOICE-SETUP.md) for Microsoft's installer and the speech prerequisites. An installation on the old PC does not carry over to this server.
 
 Do not transfer the old `.venv` folder: setup creates a new environment for the server. The source release excludes your local settings, credentials, downloaded models, logs, and firmware binaries.
 
@@ -38,10 +39,10 @@ Because the bridge will run on the same machine, it uses `http://127.0.0.1:1234/
 
 1. In `C:\Apps\Franky`, double-click **START-HERE.cmd**.
 2. Select **LM Studio**. Enter **`http://127.0.0.1:1234/v1`** when asked for the LM Studio address.
-3. Select the exact chat model from the displayed list. Let the Python and speech-file setup finish.
+3. Select the exact chat model from the displayed list. Let setup install the Python speech libraries and download both Kokoro files and the English recognition model. This is required even when LM Studio already works; see the [speech component checklist](VOICE-SETUP.md#2-let-start-here-install-the-speech-components). The C++ runtime is installed separately in step 1 above.
 4. Double-click **SET-BRIDGE-ADDRESS.cmd**. Enter **`http://192.168.5.250:8766`** and save it.
 5. Double-click **START-FRANKY.cmd**, keeping its window open.
-6. On the server, open **`http://localhost:8766`**. Wait for the speech readiness checks to finish, then try a voice preview.
+6. On the server, open **`http://localhost:8766`**. Wait for the speech readiness checks to finish, then try a voice preview. **Setup complete** alone does not test voice generation. If the server has no speakers, preview from your normal PC at **`http://192.168.5.250:8766`** after allowing LAN access below.
 
 The page's **Connection settings** displays the advertised bridge address and the separate LM Studio address. Saving the advertised address does not change Windows networking, the listen port, firewall rules, or Franky's stored device settings. Restart the bridge after changing configuration so the dashboard uses the new values.
 
@@ -89,7 +90,7 @@ Test-NetConnection 192.168.5.250 -Port 8766
 - **Website works but chat is unavailable:** check LM Studio's API server, loaded model, exact model ID, and local port. Restart the bridge after changing provider configuration.
 - **Website shows the old address:** rerun SET-BRIDGE-ADDRESS and restart the bridge. A `BRIDGE_PUBLIC_URL` environment override takes precedence over the saved address.
 - **LM Studio address unexpectedly stays on another PC:** check `LM_STUDIO_URL` and `LM_STUDIO_MODEL` environment overrides on the AI server.
-- **Speech service needs attention:** leave startup time for local model preparation; see [TROUBLESHOOTING.md](TROUBLESHOOTING.md) if it remains unavailable.
+- **Speech service needs attention or preview fails:** leave startup time for local model preparation, then use the [voice dependency and download repair steps](VOICE-SETUP.md#if-a-speech-component-is-missing). Rerunning setup alone does not install a missing Windows C++ runtime.
 - **Robot cannot connect but the browser can:** confirm it uses **8766**, not **1234**, and is on a network allowed to reach the server.
 
 ## Everyday operation and rollback

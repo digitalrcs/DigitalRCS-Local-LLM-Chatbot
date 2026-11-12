@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3-preview.3
+
+- Expanded Windows setup and AI-server instructions with the X64 C++ runtime prerequisite, automatic voice/recognition downloads, eSpeak troubleshooting, and required voice-preview verification. Documentation update; bridge and firmware behavior are unchanged.
+
 ## 0.3.3-preview.2
 
 - Replaced the spoken thinking acknowledgment with the short ready chime after a question. Update and restart the voice bridge; existing firmware needs no reflash.
