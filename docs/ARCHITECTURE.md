@@ -22,7 +22,7 @@ The wizard writes `bridge/config.json`, which Git and the release builder exclud
 | POST `/voice/preview` | Same voice JSON | Playable WAV preview; does not save selection |
 | POST `/v1/audio/transcriptions` | Multipart `file`: mono 16-bit 16 kHz WAV, <=13 seconds and <=500 KB | `text` and optional deterministic `control` metadata |
 | POST `/v1/audio/wake` | Same local WAV contract | Boolean `wake` and `pause` flags only; no transcript or provider call |
-| POST `/v1/audio/cue` | JSON `kind`: listening, thinking, or paused | Selected-voice cached PCM16, mono 24 kHz |
+| POST `/v1/audio/cue` | JSON `kind`: listening, followup, thinking, paused, or welcome | PCM16, mono 24 kHz: synthesized bell cues, or selected-voice cached speech for welcome |
 | POST `/v1/chat/completions` | JSON `messages` with system/user/assistant roles | One assistant message; non-streaming |
 | POST `/v1/audio/speech` | JSON `{"input":"Hello"}` | Raw signed little-endian PCM16, mono 24 kHz, <=60 seconds |
 
@@ -52,4 +52,4 @@ Passive wake monitoring remains available to web controls: a settings write canc
 
 Background energy-gated utterances are bounded to four seconds, with pre-roll and trailing silence, and sent only to the local wake endpoint. Accepted wake phrases cause a ready cue, then a separate bounded question recording. Capture is half-duplex and suspended during recognition/playback. See [hands-free limitations](HANDS-FREE.md).
 
-Question and follow-up capture waits about 15 seconds for speech and uses 1.5 seconds of trailing silence. After a successful hands-free reply, another ready chime opens a follow-up window; silence returns to wake monitoring without a model call. Wake capture retains an 800 ms tail. Normal idle wake retries wait 40 ms rather than 700 ms, with a longer error backoff. Ready/pause cues are original PCM bell synthesis; the thinking cue remains cached local speech.
+Question and follow-up capture waits about 15 seconds for speech and uses 1.5 seconds of trailing silence. After a successful hands-free reply, another ready chime opens a follow-up window; silence returns to wake monitoring without a model call. Wake capture retains an 800 ms tail. Normal idle wake retries wait 40 ms rather than 700 ms, with a longer error backoff. Listening, follow-up, thinking, and pause cues use original PCM bell synthesis; thinking reuses the listening chime. The welcome cue remains cached local speech in the selected voice.

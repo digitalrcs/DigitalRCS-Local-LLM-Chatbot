@@ -235,10 +235,10 @@ class Cue(BaseModel):
 
 @lru_cache(maxsize=36)
 def cached_cue(kind: str, engine: str, voice: str) -> bytes:
-    if kind in {'listening', 'followup', 'paused'}:
+    if kind in {'listening', 'followup', 'thinking', 'paused'}:
         from chimes import chime
-        return chime(kind)
-    text = "You're welcome." if kind == 'welcome' else 'One moment, let me think.'
+        return chime('listening' if kind == 'thinking' else kind)
+    text = "You're welcome."
     if engine == 'kokoro':
         from neural_voice import synthesize as neural_speech
         return neural_speech(text, voice=voice)
