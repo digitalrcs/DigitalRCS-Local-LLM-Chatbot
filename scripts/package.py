@@ -4,7 +4,7 @@ from pathlib import Path
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.3.3-preview.2"
+VERSION = "0.3.3-preview.3"
 FILES = [
     "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "SECURITY.md", "CONTRIBUTING.md", "CHANGELOG.md",
     "START-HERE.cmd", "START-FRANKY.cmd", "CHECK-SETUP.cmd",
@@ -16,7 +16,7 @@ FILES = [
     "bridge/download_voice.py", "bridge/speak.ps1", "bridge/voices.html",
     "bridge/requirements.txt", "bridge/requirements-lock.txt",
     "scripts/setup.ps1", "scripts/start.ps1", "scripts/check.ps1", "scripts/allow-lan.ps1", "scripts/package.py",
-    "docs/INSTALL.md", "docs/TROUBLESHOOTING.md", "docs/ARCHITECTURE.md",
+    "docs/INSTALL.md", "docs/VOICE-SETUP.md", "docs/TROUBLESHOOTING.md", "docs/ARCHITECTURE.md",
     "tests/test_bridge.py", "tests/test_neural_voice.py", "tests/test_voice_settings.py",
     "tests/test_device_commands.py", "tests/test_settings.py", "tests/test_providers.py", "tests/control_logic_test.cpp",
     "bridge/chimes.py", "tests/audio_capture_test.py", "bridge/listening.py", "tests/test_listening.py", "docs/HANDS-FREE.md",

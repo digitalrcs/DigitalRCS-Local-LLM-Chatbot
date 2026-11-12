@@ -12,6 +12,7 @@ You need:
 - Several GB of free space for Python and speech files, plus enough room and memory for your chosen LM Studio model.
 - [LM Studio](https://lmstudio.ai/) on this computer or another computer on your home network.
 - [Python 3.13 for Windows](https://www.python.org/downloads/windows/). Look for a **3.13** release and choose **Windows installer (64-bit)**. Use the normal installer, not the embeddable package. Include the Python launcher if offered. Newer Python versions are not tested here.
+- The **Microsoft Visual C++ v14 Redistributable, X64**, installed on the bridge computer. Follow [voice software and downloads](VOICE-SETUP.md) for the official installer, speech components, and repair steps. START-HERE does not install this Windows runtime for you.
 
 Python is the program that runs the bridge. You do not need to learn Python to use it. If this is a family or school computer, ask the person who manages it to help with software installation or firewall settings.
 
@@ -46,10 +47,12 @@ There are two roles: the **bridge computer** runs this download; the **LM Studio
 2. Wait while the setup window installs the bridge's required software. This can take several minutes.
 3. At the provider choice, press **Enter** for LM Studio. Then enter the LM Studio address. If both programs are on this PC, press **Enter** to accept the displayed default.
 4. Choose the number beside your chat model. The wizard saves that choice for you.
-5. Wait for the voice and English recognition downloads. The Kokoro files alone are about 354 MB. A slow connection may take longer.
+5. Wait for the voice and English recognition downloads. The Kokoro files alone are about 354 MB. Setup also installs the speech libraries, including the bundled eSpeak pronunciation component. See [what each component does](VOICE-SETUP.md#2-let-start-here-install-the-speech-components). A slow connection may take longer.
 6. Look for **Setup complete**. Then press a key to close the window.
 
 If you see an error, read it before closing. Running setup again retries installation and downloads; it does not erase your chosen voice. You can also rerun it to select another LM Studio address or model. Restart the bridge afterward.
+
+**Setup complete** is not a voice test. Finish the preview step below to check that the speech libraries and voice files work together on this computer.
 
 ## 5. Start Franky's voice bridge
 
