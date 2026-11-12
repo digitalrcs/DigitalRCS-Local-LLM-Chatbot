@@ -25,11 +25,27 @@ These speech libraries and model files are sometimes described as “voice drive
 
 ### Choosing a chat model for speed
 
-Franky speaks only one to three sentences, so a fast model matters more than a large one. An instruct model of about 7B to 14B parameters (4-bit quantized) usually answers quickly on a desktop GPU. Avoid "thinking" or "reasoning" variants; the bridge turns reasoning off for Qwen3-family models (`disable_thinking`), but other reasoning models still spend time on text nobody hears. In LM Studio, keep the model loaded so it is not unloaded while idle. `max_output_tokens` of 256 is enough for spoken replies. The bridge log shows `Franky timing:` lines so you can compare models.
+Franky requests one to three spoken sentences. Compare models on your own hardware using the bridge's `Franky timing:` log lines, and keep the selected model loaded in LM Studio. The bridge can request reasoning off for Qwen3-family templates through `disable_thinking`; this does not turn off Gemma's reasoning. The default `max_output_tokens` is **1200**, including reasoning tokens. A limit of 256 can leave Gemma without enough room to produce an answer, even for a short question. Explicit saved limits are preserved; see [provider settings](PROVIDERS.md).
 
 The default bridge uses CPU speech processing. Separate CUDA/cuDNN or FFmpeg installations are not prerequisites for this setup. LM Studio's chat model has its own hardware requirements.
 
 When moving computers, run setup on the destination to create its own `.venv`. You may copy `bridge/models` to reuse downloaded speech models, but that does not replace package installation or the Windows runtime. See the [Windows AI-server guide](WINDOWS-SERVER.md).
+
+### Hugging Face unauthenticated-download warning
+
+The warning about unauthenticated requests to the HF Hub concerns downloading the speech-recognition models. It is not a voice-engine failure. If all readiness checks pass, Franky can run with the downloaded models; authentication does not make normal local conversations faster.
+
+For authenticated downloads, open a separate PowerShell window **on the AI server**, using the same Windows account that runs START-FRANKY. For an installation at `C:\Data\FrankyChat`, run:
+
+```powershell
+Set-Location 'C:\Data\FrankyChat'
+& .\.venv\Scripts\hf.exe auth login --no-add-to-git-credential
+& .\.venv\Scripts\hf.exe auth whoami
+```
+
+Follow the browser sign-in instructions. If you choose to enter an access token instead, create a read token in your [Hugging Face token settings](https://huggingface.co/settings/tokens) and enter it only in the local login prompt. Do not paste it into a chat, project file, or GitHub. Git credential storage is unnecessary for Franky's downloads.
+
+The [Hugging Face CLI](https://huggingface.co/docs/huggingface_hub/en/guides/cli) saves the login for that Windows account. An explicitly configured [`HF_TOKEN`](https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables#hf_token) overrides the cached login; a separate environment variable is not required after a successful login. If `whoami` succeeds, stop the bridge with Ctrl+C and start START-FRANKY again. Do not upgrade the project's locked packages just to address this warning.
 
 ## 3. Verify speech before connecting Franky
 
