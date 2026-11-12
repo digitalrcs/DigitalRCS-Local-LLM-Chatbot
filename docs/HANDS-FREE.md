@@ -12,7 +12,7 @@ With the updated PC bridge and firmware, Franky can answer without holding a but
 
 After each hands-free answer, a quiet ready chime opens another 15-second window for a follow-up without a wake phrase. If you stay quiet, Franky returns to wake-word mode without an error. A falling chime confirms a spoken pause command. These original bell sounds are generated locally and do not need a speech model.
 
-Before requesting the model's answer, Franky says **One moment, let me think**. This neutral acknowledgment does not promise that he can fulfill the request. Simple volume/brightness commands receive their normal confirmation instead. Short voice cues are cached on the PC for the selected voice; the first use can take longer.
+Before requesting the model's answer, Franky plays a short rising chime, then you wait for his answer. There is no spoken thinking acknowledgment. Simple volume/brightness commands receive their normal confirmation instead.
 
 Say the wake phrase separately from the question. Recognition pauses while the PC checks a snippet, while Franky answers, and briefly between recordings. He cannot hear a spoken interruption while speaking. If he misses you, wait a moment and repeat **Hello Franky**. During passive wake listening, hold BOOT to cancel the wake check and start a recording once the worker is available. Keep holding until the screen says **Listening**; releasing early cancels the pending recording. Web **Talk to Franky** also takes over passive listening; wait for **Listening** before speaking.
 

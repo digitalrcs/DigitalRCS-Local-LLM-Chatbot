@@ -62,14 +62,33 @@ class ListeningTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.json()['pause'], True)
 
-    def test_cues_cache_per_voice(self):
+    def test_welcome_caches_speech_per_voice(self):
         server.cached_cue.cache_clear()
         with patch('neural_voice.synthesize', return_value=b'\0\0') as synth:
-            server.cached_cue('thinking', 'kokoro', 'am_liam')
-            server.cached_cue('thinking', 'kokoro', 'am_liam')
-            server.cached_cue('thinking', 'kokoro', 'am_adam')
+            server.cached_cue('welcome', 'kokoro', 'am_liam')
+            server.cached_cue('welcome', 'kokoro', 'am_liam')
+            server.cached_cue('welcome', 'kokoro', 'am_adam')
             self.assertEqual(synth.call_count, 2)
+            synth.assert_called_with("You're welcome.", voice='am_adam')
         server.cached_cue.cache_clear()
+
+    def test_thinking_uses_ready_chime_without_speech_for_either_engine(self):
+        from chimes import chime
+        self.addCleanup(server.cached_cue.cache_clear)
+        server.cached_cue.cache_clear()
+        with patch('neural_voice.synthesize') as neural, \
+             patch.object(server, 'synthesize_windows') as windows:
+            for engine in ['kokoro', 'windows']:
+                for voice in ['am_liam', 'am_adam']:
+                    with self.subTest(engine=engine, voice=voice), \
+                         patch.object(server, 'TTS_ENGINE', engine), \
+                         patch.object(server, 'current_voice', return_value=voice):
+                        response = TestClient(server.app).post('/v1/audio/cue', json={'kind': 'thinking'})
+                        self.assertEqual(response.status_code, 200)
+                        self.assertEqual(response.headers['content-type'], 'application/octet-stream')
+                        self.assertEqual(response.content, chime('listening'))
+            neural.assert_not_called()
+            windows.assert_not_called()
 
     def test_cue_rejects_arbitrary_text(self):
         response = TestClient(server.app).post('/v1/audio/cue', json={'kind': 'arbitrary'})

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3-preview.2
+
+- Replaced the spoken thinking acknowledgment with the short ready chime after a question. Update and restart the voice bridge; existing firmware needs no reflash.
+
 ## 0.3.3-preview.1
 
 - Web settings and Talk remain usable during passive hands-free monitoring.
