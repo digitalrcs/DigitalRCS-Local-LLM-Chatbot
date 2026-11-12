@@ -23,7 +23,13 @@ if (-not (Test-Path -LiteralPath $venv)) {
 & $venv -m pip install -r bridge/requirements-lock.txt
 if ($LASTEXITCODE) { throw 'Package installation failed. Check your Internet connection and try again.' }
 & $venv bridge/configure.py
+if ($LASTEXITCODE -eq 2) {
+    Write-Host 'Setup cancelled. Existing settings were kept. Run START-HERE when you are ready to continue.'
+    exit 2
+}
 if ($LASTEXITCODE) { throw 'Connection setup was not completed.' }
+& $venv -c "import sys; sys.path.insert(0, 'bridge'); from settings import load_settings; assert load_settings()['model'], 'Choose a chat model before continuing'"
+if ($LASTEXITCODE) { throw 'No usable provider configuration was saved. Run START-HERE again.' }
 & $venv bridge/download_voice.py
 if ($LASTEXITCODE) { throw 'Voice download failed. Run setup again to retry.' }
 & $venv -c "import sys; sys.path.insert(0, 'bridge'); from server import recognizer; recognizer(); print('English speech model ready')"

@@ -2,10 +2,13 @@
 
 Start with **CHECK-SETUP.cmd** while both programs are open. Read the error text before closing the window.
 
+The bridge page at **http://localhost:8766** shows separate speech recognition, voice, and chat checks. Speech models load in the background when the bridge starts. Leave the window open while they prepare; failed checks and provider availability refresh about every 30 seconds. A successful model-list check is not a full conversation test: use a voice preview, then ask Franky a short question.
+
 | Problem | What to try |
 | --- | --- |
 | Python not found | Install 64-bit Python 3.13 and its launcher, then run START-HERE again. |
 | Setup download fails | Check Internet access, disk space, and retry START-HERE. Interrupted voice downloads are replaced on retry. |
+| Setup says cancelled | Existing provider settings were kept. Run START-HERE again and complete a provider choice; cancellation does not finish a fresh installation. |
 | No models found | Load a chat model in LM Studio and start its API server. |
 | Connection setup fails | Check the address ends in `/v1`, the port matches LM Studio, and the server is running. For another PC, enable its local-network server access. |
 | Model is listed but replies fail | Test the model inside LM Studio; make sure it is a chat model and fits in memory. Some models take longer than the bridge's 50-second read timeout. |

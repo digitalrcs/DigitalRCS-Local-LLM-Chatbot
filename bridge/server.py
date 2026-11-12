@@ -5,11 +5,13 @@ LM Studio by default; optional cloud providers are selected explicitly on the PC
 import io
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import threading
 import wave
 from functools import lru_cache
+from contextlib import asynccontextmanager
 from typing import Literal
 
 import requests
@@ -17,10 +19,11 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import Response, FileResponse
 from pydantic import BaseModel, Field
 from settings import load_settings
-from providers import generate_reply, ProviderError
+from providers import generate_reply, list_models, ProviderError
 from device_commands import parse_control
 from voice_settings import VOICES, CATALOG, current_voice, select_voice
 from listening import is_wake, is_pause, is_goodbye
+from readiness import ReadinessMonitor
 
 ROOT = Path(__file__).resolve().parent
 _settings = load_settings()
@@ -28,21 +31,83 @@ LM_URL = _settings["base_url"]
 LM_MODEL = _settings["model"]
 STT_MODEL = os.environ.get("WHISPER_MODEL", "base.en")
 TTS_ENGINE = os.environ.get("TTS_ENGINE", "kokoro")
-app = FastAPI(title="DigitalRCS Local LLM Chatbot")
-_lock = threading.Lock()
+_lock = threading.RLock()
 _whisper = None
+_readiness = None
 
 def recognizer():
     global _whisper
-    if _whisper is None:
-        from faster_whisper import WhisperModel
-        _whisper = WhisperModel(STT_MODEL, device="cpu", compute_type="int8",
-                                download_root=str(ROOT / "models"))
+    with _lock:
+        if _whisper is None:
+            from faster_whisper import WhisperModel
+            _whisper = WhisperModel(STT_MODEL, device="cpu", compute_type="int8",
+                                    download_root=str(ROOT / "models"))
     return _whisper
+
+
+def prepare_recognition():
+    recognizer()
+    return "English speech model loaded. Test microphone quality on the robot."
+
+
+def prepare_voice():
+    if TTS_ENGINE == "kokoro":
+        from neural_voice import prepare
+        prepare()
+        return "Local Kokoro voice model loaded. Use a preview to test speech."
+    if TTS_ENGINE == "windows" and shutil.which("powershell.exe") and (ROOT / "speak.ps1").is_file():
+        return "Windows speech is configured; voice generation has not been tested."
+    raise ValueError("Voice engine unavailable")
+
+
+def check_chat():
+    config = {**_settings, "base_url": LM_URL, "model": LM_MODEL}
+    if not LM_MODEL:
+        raise ValueError("No model configured")
+    ids = list_models(config, timeout=(2, 4))
+    if LM_MODEL not in ids:
+        raise ValueError("Selected model unavailable")
+    if config["provider"] == "lmstudio":
+        return "LM Studio is reachable and the model is listed. Reply generation has not been tested."
+    if config["provider"] == "openrouter" and LM_MODEL == "openrouter/free":
+        return "OpenRouter's model catalog is reachable and the free router is configured. Generation access, quota and billing have not been tested."
+    return "Provider is reachable and the model is listed. Generation access, quota and billing have not been tested."
+
+
+def make_readiness():
+    return ReadinessMonitor({
+        "recognition": (prepare_recognition, "Speech model could not load. Run START-HERE to finish speech setup; see Troubleshooting if this continues."),
+        "voice": (prepare_voice, "Voice engine could not load. Check the selected engine and run START-HERE to finish voice downloads."),
+        "chat": (check_chat, "Chat model is unavailable. Start LM Studio and load the selected model, or check CHANGE-PROVIDER settings for your provider."),
+    })
+
+
+@asynccontextmanager
+async def lifespan(application):
+    global _readiness
+    monitor = make_readiness()
+    _readiness = monitor
+    monitor.start()
+    try:
+        yield
+    finally:
+        monitor.stop()
+
+
+app = FastAPI(title="DigitalRCS Local LLM Chatbot", lifespan=lifespan)
+
+
+@app.get("/ready")
+def ready():
+    # No I/O or model work in this handler. Even a failed/cold model must not
+    # prevent the dashboard from explaining what is happening.
+    monitor = _readiness
+    return (monitor if monitor is not None else make_readiness()).snapshot()
 
 @app.get("/health")
 def health():
     return {"status": "ok", "provider": _settings["provider"], "provider_url": LM_URL, "model": LM_MODEL,
+            "public_bridge_url": _settings.get("public_bridge_url", ""), "lm_studio_url": _settings.get("lm_studio_url", ""),
             "speech_model": STT_MODEL, "speech_loaded": _whisper is not None,
             "tts_engine": TTS_ENGINE,
             "tts_voice": current_voice() if TTS_ENGINE == "kokoro" else "Windows default"}
@@ -85,7 +150,8 @@ def voice_page():
 
 @app.get("/voices")
 def voices():
-    return {"voices": VOICES, "selected": current_voice(), "engine": TTS_ENGINE, "provider": _settings["provider"], "model": LM_MODEL}
+    return {"voices": VOICES, "selected": current_voice(), "engine": TTS_ENGINE, "provider": _settings["provider"], "model": LM_MODEL,
+            "public_bridge_url": _settings.get("public_bridge_url", ""), "lm_studio_url": _settings.get("lm_studio_url", "")}
 
 class VoiceChoice(BaseModel):
     voice: str

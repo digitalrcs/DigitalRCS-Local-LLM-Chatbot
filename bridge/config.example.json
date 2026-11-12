@@ -2,5 +2,6 @@
   "provider": "lmstudio",
   "lm_studio_url": "http://127.0.0.1:1234/v1",
   "lm_studio_model": "choose-your-loaded-chat-model-in-setup",
+  "public_bridge_url": "",
   "max_output_tokens": 1200
 }

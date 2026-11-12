@@ -84,6 +84,8 @@ LM Studio stays the default. To choose OpenAI, OpenRouter free models, or Gemini
 
 To stop, click the bridge window and press **Ctrl+C**. To move to another computer, copy the release ZIP and run setup there; do not copy the `.venv` folder. To uninstall, stop the bridge and delete the extracted folder. LM Studio, its models, and Python are separate installations.
 
+For a dedicated Windows machine running both LM Studio and the bridge, use the [AI-server migration guide](WINDOWS-SERVER.md). It covers the shared website, the advertised LAN address, firewall access, the robot's connection settings, and rollback.
+
 ## A few useful words
 
 | Word | Meaning |

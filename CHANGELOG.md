@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.3-preview.1
+
+- Web settings and Talk remain usable during passive hands-free monitoring.
+- Partial settings saves and synchronized controls preserve spoken changes and unsaved edits; the page recovers after an initial connection failure.
+- BOOT during an active interaction and the new web Stop button cancel capture, playback, pending replies, and follow-ups. Response waits are cancellable; network connection/upload operations may still take time to return.
+- The voice page shows cached recognition, voice, and chat readiness while speech models load in the background. Availability checks do not generate answers or speech.
+- Cancelling provider setup no longer reports success or continues model downloads.
+- Windows AI-server migration guide and SET-BRIDGE-ADDRESS launcher; the dashboard identifies the robot-facing bridge address separately from LM Studio's address.
+- Added browser-script, interaction-state, playback, network cancellation, setup, and readiness regression checks.
+
 ## 0.3.2-preview.1
 
 - Standalone thank-you phrases end the conversation and return to wake-word mode without pausing.
