@@ -3,23 +3,27 @@
 LM Studio by default; optional cloud providers are selected explicitly on the PC.
 """
 import io
+import json
+import logging
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import threading
+import time
 import wave
 from functools import lru_cache
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from typing import Literal
 
 import requests
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import Response, FileResponse
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response, FileResponse, StreamingResponse
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 from settings import load_settings
-from providers import generate_reply, list_models, ProviderError
+from providers import generate_reply, list_models, stream_reply, ProviderError
+from conversation import frame, stream_reply_frames
 from device_commands import parse_control
 from voice_settings import VOICES, CATALOG, current_voice, select_voice
 from listening import is_wake, is_pause, is_goodbye
@@ -30,24 +34,68 @@ _settings = load_settings()
 LM_URL = _settings["base_url"]
 LM_MODEL = _settings["model"]
 STT_MODEL = os.environ.get("WHISPER_MODEL", "base.en")
+# Wake checks hear two-word phrases, so a smaller model is enough. Set
+# WAKE_WHISPER_MODEL to the same name as WHISPER_MODEL to share one model.
+WAKE_STT_MODEL = os.environ.get("WAKE_WHISPER_MODEL", "tiny.en")
+# "cpu" keeps the GPU free for the chat model; "cuda" suits a spare GPU.
+STT_DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
 TTS_ENGINE = os.environ.get("TTS_ENGINE", "kokoro")
+log = logging.getLogger("uvicorn.error")
+# Questions and wake checks use separate models and locks, so a question never
+# waits behind a background wake check.
 _lock = threading.RLock()
+_wake_lock = threading.RLock()
 _whisper = None
+_wake_whisper = None
 _readiness = None
+
+
+@contextmanager
+def timed(stage):
+    """Log how long one stage of a conversation took."""
+    started = time.perf_counter()
+    try:
+        yield
+    finally:
+        log.info("Franky timing: %s %.2f s", stage, time.perf_counter() - started)
+
+
+def load_whisper(name):
+    from faster_whisper import WhisperModel
+    compute = "float16" if STT_DEVICE == "cuda" else "int8"
+    return WhisperModel(name, device=STT_DEVICE, compute_type=compute, download_root=str(ROOT / "models"))
+
 
 def recognizer():
     global _whisper
     with _lock:
         if _whisper is None:
-            from faster_whisper import WhisperModel
-            _whisper = WhisperModel(STT_MODEL, device="cpu", compute_type="int8",
-                                    download_root=str(ROOT / "models"))
+            _whisper = load_whisper(STT_MODEL)
     return _whisper
+
+
+def wake_recognizer():
+    """Return (model, lock) for wake checks; fall back to the question model."""
+    global _wake_whisper
+    if WAKE_STT_MODEL == STT_MODEL:
+        return recognizer(), _lock
+    with _wake_lock:
+        if _wake_whisper is None:
+            try:
+                _wake_whisper = load_whisper(WAKE_STT_MODEL)
+            except Exception:
+                # Offline or missing download: keep wake detection working.
+                log.warning("Wake model %s unavailable; using %s for wake checks", WAKE_STT_MODEL, STT_MODEL)
+                _wake_whisper = False
+        if _wake_whisper is False:
+            return recognizer(), _lock
+        return _wake_whisper, _wake_lock
 
 
 def prepare_recognition():
     recognizer()
-    return "English speech model loaded. Test microphone quality on the robot."
+    wake_recognizer()
+    return "English speech models loaded. Test microphone quality on the robot."
 
 
 def prepare_voice():
@@ -109,10 +157,11 @@ def health():
     return {"status": "ok", "provider": _settings["provider"], "provider_url": LM_URL, "model": LM_MODEL,
             "public_bridge_url": _settings.get("public_bridge_url", ""), "lm_studio_url": _settings.get("lm_studio_url", ""),
             "speech_model": STT_MODEL, "speech_loaded": _whisper is not None,
+            "wake_speech_model": WAKE_STT_MODEL, "speech_device": STT_DEVICE,
             "tts_engine": TTS_ENGINE,
             "tts_voice": current_voice() if TTS_ENGINE == "kokoro" else "Windows default"}
 
-def recognize(file: UploadFile):
+def recognize(file: UploadFile, wake=False):
     audio = file.file.read(500_001)
     if len(audio) > 500_000:
         raise HTTPException(413, "Recording exceeds 500 KB")
@@ -124,24 +173,29 @@ def recognize(file: UploadFile):
                 raise ValueError("Recording exceeds 13 seconds")
     except (wave.Error, EOFError, ValueError) as exc:
         raise HTTPException(400, "Invalid audio: " + str(exc)) from exc
-    with _lock:
-        segments, _ = recognizer().transcribe(io.BytesIO(audio), language="en",
-            beam_size=1, vad_filter=True, condition_on_previous_text=False)
+    model, lock = wake_recognizer() if wake else (recognizer(), _lock)
+    with lock, timed("wake check" if wake else "speech to text"):
+        segments, _ = model.transcribe(io.BytesIO(audio), language="en", beam_size=1, vad_filter=True,
+                                       condition_on_previous_text=False, without_timestamps=True)
         text = " ".join(s.text.strip() for s in segments).strip()
     return text
 
 
+def question_metadata(text):
+    """Local, deterministic flags for one transcribed question."""
+    return {"text": text, "control": parse_control(text), "pause": is_pause(text), "end_conversation": is_goodbye(text)}
+
+
 @app.post("/v1/audio/transcriptions")
 def transcribe(file: UploadFile = File(...)):
-    text = recognize(file)
-    return {"text": text, "control": parse_control(text), "pause": is_pause(text), "end_conversation": is_goodbye(text)}
+    return question_metadata(recognize(file))
 
 
 @app.post("/v1/audio/wake")
 def wake(file: UploadFile = File(...)):
     # Background room speech stays within local recognition. Never return its
     # transcript or send it to a provider. Only wake/pause phrases are allowed.
-    text = recognize(file)
+    text = recognize(file, wake=True)
     return {"wake": is_wake(text), "pause": is_pause(text)}
 
 @app.get("/")
@@ -187,7 +241,8 @@ class Chat(BaseModel):
 def chat(body: Chat):
     config = {**_settings, "base_url": LM_URL, "model": LM_MODEL}
     try:
-        text = generate_reply(config, [m.model_dump() for m in body.messages])
+        with timed("chat reply"):
+            text = generate_reply(config, [m.model_dump() for m in body.messages])
         return {"choices": [{"message": {"role": "assistant", "content": text}}]}
     except ProviderError as exc:
         raise HTTPException(502, str(exc)) from exc
@@ -224,7 +279,8 @@ def synthesize(text: str) -> bytes:
 @app.post("/v1/audio/speech")
 def speech(body: Speech):
     try:
-        return Response(synthesize(body.input), media_type="application/octet-stream")
+        with timed("speech"):
+            return Response(synthesize(body.input), media_type="application/octet-stream")
     except (subprocess.SubprocessError, OSError, ValueError) as exc:
         raise HTTPException(500, "Speech synthesis failed; check configured engine and model files") from exc
 
@@ -251,3 +307,91 @@ def cue(body: Cue):
         return Response(cached_cue(body.kind, TTS_ENGINE, current_voice()), media_type='application/octet-stream')
     except (subprocess.SubprocessError, OSError, ValueError) as exc:
         raise HTTPException(500, 'Could not prepare the local voice cue') from exc
+
+
+_history = TypeAdapter(list[Message])
+
+
+def parse_history(raw: str):
+    """Validate the robot's system prompt and earlier turns (JSON message list)."""
+    try:
+        messages = _history.validate_python(json.loads(raw or "[]"))
+    except (ValueError, ValidationError) as exc:
+        raise HTTPException(400, "Invalid conversation history") from exc
+    if len(messages) > 15:
+        raise HTTPException(400, "Conversation history is too long")
+    return [m.model_dump() for m in messages]
+
+
+def converse_frames(meta, history, stop=None):
+    """Yield the frame stream for one transcribed question."""
+    stop = stop or threading.Event()
+    try:
+        if stop.is_set():
+            return
+        yield frame("J", meta)
+        text = meta["text"]
+        if meta["pause"]:
+            cue = cached_cue("paused", TTS_ENGINE, current_voice())
+            if not stop.is_set():
+                yield frame("C", cue)
+                yield frame("E", {})
+            return
+        if meta["end_conversation"]:
+            # Welcome speech may need model loading too; use the same heartbeat
+            # and error handling as ordinary speech without calling a provider.
+            yield from stream_reply_frames(iter(["You're welcome."]),
+                lambda _: cached_cue("welcome", TTS_ENGINE, current_voice()), stop=stop)
+            return
+        if meta["control"] is not None or not text or len(text) > 2000:
+            # The robot applies device commands itself and reports empty speech.
+            if not stop.is_set():
+                yield frame("E", {})
+            return
+        config = {**_settings, "base_url": LM_URL, "model": LM_MODEL}
+        pieces = stream_reply(config, [*history, {"role": "user", "content": text}], stop=stop)
+        yield from stream_reply_frames(pieces, synthesize, stop=stop,
+            cue=cached_cue("thinking", TTS_ENGINE, current_voice()))
+    except Exception:
+        if not stop.is_set():
+            yield frame("E", {"error": "Conversation audio unavailable. Check the bridge."})
+
+
+class ConversationResponse(StreamingResponse):
+    """Own cancellation even when Starlette does not close a sync generator."""
+
+    def __init__(self, frames, stop):
+        super().__init__(frames, media_type="application/octet-stream")
+        self.frames, self.stop = frames, stop
+
+    async def __call__(self, scope, receive, send):
+        async def receive_and_cancel():
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                self.stop.set()
+            return message
+
+        try:
+            await super().__call__(scope, receive_and_cancel, send)
+        finally:
+            # Heartbeats and timed queue waits release the threadpool iterator;
+            # a provider blocked in a socket read retains its read timeout.
+            self.stop.set()
+            self.frames.close()
+
+
+@app.post("/v1/converse")
+def converse(file: UploadFile = File(...), messages: str = Form("[]")):
+    """One request per spoken question: transcript, chime and streamed speech.
+
+    Errors found before streaming starts return normal HTTP errors. Once the
+    stream starts, errors arrive in the final E frame.
+    """
+    history = parse_history(messages)
+    meta = question_metadata(recognize(file))
+    try:
+        frame("J", meta)
+    except ValueError as exc:
+        raise HTTPException(400, "Transcription exceeds the supported frame size") from exc
+    stop = threading.Event()
+    return ConversationResponse(converse_frames(meta, history, stop), stop)

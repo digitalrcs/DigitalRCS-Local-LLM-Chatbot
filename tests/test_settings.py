@@ -18,6 +18,20 @@ class SettingsTests(unittest.TestCase):
                 self.assertEqual(load_settings(path)["lm_studio_model"], "override")
             self.assertFalse(path.with_suffix(".json.tmp").exists())
 
+    def test_voice_reply_defaults_and_preserved_switches(self):
+        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {}, clear=True):
+            path = Path(folder) / "config.json"
+            cfg = load_settings(path)
+            self.assertEqual(cfg["max_output_tokens"], 1200)
+            self.assertIs(cfg["disable_thinking"], True)
+            path.write_text(json.dumps({"disable_thinking": False, "max_output_tokens": 256}))
+            save_settings("http://localhost:1234/v1", "my-chat", path)
+            self.assertIs(load_settings(path)["disable_thinking"], False)
+            self.assertEqual(load_settings(path)["max_output_tokens"], 256)
+            path.write_text(json.dumps({"disable_thinking": "no"}))
+            with self.assertRaises(ValueError):
+                load_settings(path)
+
     def test_invalid_addresses(self):
         for value in ("file:///v1", "http://localhost", "http://user:pass@localhost/v1", "http://localhost/v1?key=test", "http://localhost:bad/v1"):
             with self.subTest(value=value), self.assertRaises(ValueError):

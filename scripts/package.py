@@ -4,7 +4,7 @@ from pathlib import Path
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.3.3-preview.3"
+VERSION = "0.4.0-preview.1"
 FILES = [
     "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "SECURITY.md", "CONTRIBUTING.md", "CHANGELOG.md",
     "START-HERE.cmd", "START-FRANKY.cmd", "CHECK-SETUP.cmd",
@@ -21,6 +21,7 @@ FILES = [
     "tests/test_device_commands.py", "tests/test_settings.py", "tests/test_providers.py", "tests/control_logic_test.cpp",
     "bridge/chimes.py", "tests/audio_capture_test.py", "bridge/listening.py", "tests/test_listening.py", "docs/HANDS-FREE.md",
     "bridge/provider_config.py", "bridge/credential_store.py", "bridge/providers.py",
+    "bridge/conversation.py", "tests/test_conversation.py", "tests/test_provider_stream.py", "tests/frame_reader_test.py",
     "CHANGE-PROVIDER.cmd", "BUILD-FRANKY.cmd", "FLASH-FRANKY.cmd",
     "scripts/provider.ps1", "scripts/build-firmware.ps1", "scripts/flash-firmware.ps1", "scripts/flash-wizard.ps1",
     "scripts/generate_frog.py", "scripts/embed_setup.py", "docs/PROVIDERS.md", "docs/FIRMWARE.md",

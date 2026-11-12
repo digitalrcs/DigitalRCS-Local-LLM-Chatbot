@@ -95,6 +95,7 @@ def save_settings(url, model, path=CONFIG, provider="lmstudio"):
     validate_model(provider, model)
     old = load_settings(path)
     data = {"provider": provider, "model": model.strip(), "max_output_tokens": old["max_output_tokens"],
+            "disable_thinking": old["disable_thinking"],
             "lm_studio_url": old["lm_studio_url"], "lm_studio_model": old["lm_studio_model"],
             "public_bridge_url": validate_public_bridge_url(_read_config(path).get("public_bridge_url", ""))}
     if provider == "lmstudio":

@@ -47,6 +47,6 @@ The local recognizer accepts Franky/Frankie spellings. It requires a standalone 
 
 Hands-free is off by default on fresh installations. When enabled and not paused, the kit samples room audio and sends speech-like snippets to the bridge PC for local Whisper recognition. Background snippets do not go to LM Studio or cloud chat providers, and their transcripts are not returned to the device or intentionally stored. After a successful wake, your question goes through your selected provider as usual. Optional cloud providers receive the question text.
 
-This mode uses more PC processing and LAN traffic than button mode. Keep the bridge PC awake. A lost connection means wake recognition is unavailable. Use only a trusted home network.
+Wake checks use a small separate recognition model (`tiny.en` by default, `WAKE_WHISPER_MODEL`) with its own lock, so a question never waits for a background wake check. This mode uses more PC processing and LAN traffic than button mode. Keep the bridge PC awake. A lost connection means wake recognition is unavailable. Use only a trusted home network.
 
 During an open question or follow-up window, detected speech is treated as a question and may be sent as text to your selected provider. Use **stop listening** to end listening when other conversations are happening nearby.

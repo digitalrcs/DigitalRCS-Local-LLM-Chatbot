@@ -18,10 +18,14 @@ Extract the project to its permanent folder, then run **START-HERE.cmd** there. 
 | Kokoro ONNX and ONNX Runtime | Generate Franky's spoken replies | Setup installs the pinned Python packages in `.venv` |
 | Phonemizer and eSpeak NG | Turn words into pronunciation symbols for Kokoro | Setup installs `phonemizer` and `espeakng-loader`, which normally supplies the eSpeak library and language data |
 | Kokoro model and voice pack | Supply Liam and the other selectable voices | Setup downloads `kokoro-v1.0.onnx` and `voices-v1.0.bin` to `bridge/models/kokoro` (about 354 MB together) |
-| faster-whisper and the English `base.en` model | Recognize the question Franky records | Setup installs the packages and downloads the model under `bridge/models` |
+| faster-whisper and the English `base.en` and `tiny.en` models | Recognize the question Franky records (`base.en`) and hands-free wake phrases (`tiny.en`) | Setup installs the packages and downloads the models under `bridge/models` |
 | LM Studio chat model | Write an answer to the recognized question | Download and load separately in LM Studio |
 
 These speech libraries and model files are sometimes described as “voice drivers.” They are separate from the ESP32 firmware and from the USB driver used to flash the robot. Liam comes from the Kokoro voice pack; the default setup does not require adding Liam as a Windows system voice.
+
+### Choosing a chat model for speed
+
+Franky speaks only one to three sentences, so a fast model matters more than a large one. An instruct model of about 7B to 14B parameters (4-bit quantized) usually answers quickly on a desktop GPU. Avoid "thinking" or "reasoning" variants; the bridge turns reasoning off for Qwen3-family models (`disable_thinking`), but other reasoning models still spend time on text nobody hears. In LM Studio, keep the model loaded so it is not unloaded while idle. `max_output_tokens` of 256 is enough for spoken replies. The bridge log shows `Franky timing:` lines so you can compare models.
 
 The default bridge uses CPU speech processing. Separate CUDA/cuDNN or FFmpeg installations are not prerequisites for this setup. LM Studio's chat model has its own hardware requirements.
 
@@ -69,7 +73,7 @@ For an already configured installation, these focused retries keep the saved pro
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r .\bridge\requirements-lock.txt
 .\.venv\Scripts\python.exe .\bridge\download_voice.py
-.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'bridge'); from server import recognizer; recognizer(); print('English speech model ready')"
+.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'bridge'); from server import recognizer, wake_recognizer; recognizer(); wake_recognizer(); print('English speech models ready')"
 ```
 
 Run the commands in order and stop if one reports an error. The voice downloader skips existing final files; it retries an interrupted `.part` download. If an error identifies an existing Kokoro file as corrupt, move **that file** out of `bridge/models/kokoro` as a backup, then rerun the downloader. Do not replace the model filenames with files from a different Kokoro version.

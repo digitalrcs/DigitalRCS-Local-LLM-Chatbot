@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0-preview.1
+
+Faster, smoother conversations and a talking mouth. Update and restart the bridge, then build and flash the firmware. Older firmware keeps working with the new bridge, and the new firmware falls back to the old requests with an older bridge.
+
+- **Streamed replies.** New `POST /v1/converse` takes the recording and returns one stream: what was heard, the thinking chime, then each sentence's speech as soon as it is ready. A chat thread turns streamed model text into sentences while a voice thread speaks them, so Franky starts talking after the first sentence instead of after the whole reply. The robot plays audio as it downloads, which also removes the 60-second reply buffer.
+- **Reasoning off for voice.** New `disable_thinking` setting (default `true`) adds `/no_think` for Qwen3-family models. Reasoning text is also removed from streamed replies.
+- **Reasoning-aware reply budget.** `max_output_tokens` defaults to 1200; explicit saved values are kept. Gemma can spend a 256-token budget on reasoning before returning an answer. Output-limit failures are reported instead of treating incomplete text as a finished reply.
+- **Wake checks no longer delay questions.** Wake phrases use their own `tiny.en` model and lock (`WAKE_WHISPER_MODEL`). If it cannot load, wake checks fall back to the question model. `WHISPER_DEVICE=cuda` optionally moves recognition to a GPU.
+- **Chimes are cached on the robot** after the first download.
+- **Talking mouth.** While speaking, the frog's mouth opens to one of four sizes from the loudness of the audio.
+- **Timing logs.** The bridge log shows the time for speech recognition, wake checks, first speech and the full reply.
+- Stream cancellation is tied to the HTTP response, including disconnects. Heartbeats keep the robot connected while waiting for model or voice work; partial failures remain errors and do not update conversation history.
+- Streamed provider text is decoded as UTF-8; frame byte limits cover Unicode metadata and replies. Firmware propagates playback failures during waits and avoids an Arduino helper-name collision.
+
 ## 0.3.3-preview.3
 
 - Expanded Windows setup and AI-server instructions with recovery for unfinished Kokoro `.part` downloads, the exact retry command, the X64 C++ runtime prerequisite, eSpeak troubleshooting, and required voice-preview verification. Documentation update; bridge and firmware behavior are unchanged.

@@ -84,22 +84,62 @@ public:
     stop(); return count;
   }
   bool play(const uint8_t* pcm,size_t bytes,int volume,const std::atomic<bool>& cancel) {
-    if (cancel.load() || !bytes || bytes%2 || !mode(false)) return false;
+    if (cancel.load() || !bytes || bytes%2 || !beginPlayback()) return false;
+    bool ok=writePlayback(pcm,bytes,volume,cancel);
+    endPlayback(ok);
+    return ok;
+  }
+  // Streamed playback: beginPlayback once, writePlayback for each piece of
+  // audio as it arrives, endPlayback at the end. The speaker stays on between
+  // pieces so sentences join without clicks.
+  bool beginPlayback() {
+    mouthLoudness=0; mouthSamples=0; mouth.store(0);
+    return mode(false);
+  }
+  // Plays mono signed 16-bit little-endian PCM. Returns false on cancel or an
+  // I2S failure. i2s.write blocks while the DMA buffer is full, which paces
+  // the caller to real time.
+  bool writePlayback(const uint8_t* pcm,size_t bytes,int volume,const std::atomic<bool>& cancel) {
     int16_t stereo[512]; size_t offset=0;
-    while(offset<bytes && !cancel.load()) {
+    while(offset+1<bytes && !cancel.load()) {
       size_t n=min(size_t(256),(bytes-offset)/2);
+      uint32_t loudness=0;
       for(size_t i=0;i<n;i++) {
         int16_t value=int16_t(uint16_t(pcm[offset+2*i]) | uint16_t(pcm[offset+2*i+1])<<8);
+        loudness+=value<0?uint32_t(-int32_t(value)):uint32_t(value);
         int16_t scaled=int32_t(value)*volume/100;
         stereo[2*i]=scaled; stereo[2*i+1]=scaled;
       }
       size_t sent=i2s.write(reinterpret_cast<uint8_t*>(stereo),n*4);
-      if(sent!=n*4) { stop(); return false; }
+      if(sent!=n*4) return false;
+      updateMouth(loudness,n);
       offset+=n*2; delay(1);
     }
-    if(!cancel.load())delay(100);
-    stop(); return !cancel.load();
+    return !cancel.load();
   }
+  // finished=true lets the last DMA buffer drain before the amplifier turns off.
+  void endPlayback(bool finished) {
+    if(finished) delay(100);
+    mouth.store(0);
+    stop();
+  }
+  // Mouth opening for the face: 0 closed to 3 wide. The voice task writes it
+  // while playing; the display loop on the other core only reads it.
+  std::atomic<uint8_t> mouth{0};
+private:
+  uint32_t mouthLoudness=0, mouthSamples=0;
+  // Averages about 43 ms of audio (1024 samples at 24 kHz). Loudness is
+  // measured before volume scaling so the mouth moves the same at any volume.
+  // The mouth opens at once and closes one step at a time, so it does not flicker.
+  void updateMouth(uint32_t loudness,size_t samples) {
+    mouthLoudness+=loudness; mouthSamples+=samples;
+    if(mouthSamples<1024) return;
+    uint32_t mean=mouthLoudness/mouthSamples;
+    mouthLoudness=0; mouthSamples=0;
+    uint8_t level=mean>4500?3:mean>2000?2:mean>600?1:0, now=mouth.load();
+    mouth.store(level>=now?level:uint8_t(now-1));
+  }
+public:
   // Record an utterance with 256 ms pre-roll and 800 ms trailing silence.
   // Bounded waiting and cancellation keep pause/BOOT responsive. Energy gating
   // is deliberately simple; the bridge's local VAD validates speech afterward.

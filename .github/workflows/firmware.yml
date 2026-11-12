@@ -16,6 +16,7 @@ jobs:
           python tests/audio_capture_test.py
           python tests/audio_playback_test.py
           python tests/network_cancel_test.py
+          python tests/frame_reader_test.py
       - name: Verify generated artwork and setup page
         run: |
           python scripts/generate_frog.py

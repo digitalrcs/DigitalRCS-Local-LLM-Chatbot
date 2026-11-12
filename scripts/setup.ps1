@@ -32,6 +32,6 @@ if ($LASTEXITCODE) { throw 'Connection setup was not completed.' }
 if ($LASTEXITCODE) { throw 'No usable provider configuration was saved. Run START-HERE again.' }
 & $venv bridge/download_voice.py
 if ($LASTEXITCODE) { throw 'Voice download failed. Run setup again to retry.' }
-& $venv -c "import sys; sys.path.insert(0, 'bridge'); from server import recognizer; recognizer(); print('English speech model ready')"
+& $venv -c "import sys; sys.path.insert(0, 'bridge'); from server import recognizer, wake_recognizer; recognizer(); wake_recognizer(); print('English speech models ready')"
 if ($LASTEXITCODE) { throw 'Speech recognition download failed. Run setup again to retry.' }
 Write-Host 'Setup complete. Double-click START-FRANKY.cmd, then open http://localhost:8766.' -ForegroundColor Green
