@@ -2,7 +2,7 @@
 
 **Meet Franky: an English-speaking chatbot companion powered by a local AI model.**
 
-[Installation guide](docs/INSTALL.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [How it works](docs/ARCHITECTURE.md) · [Credits](THIRD_PARTY_NOTICES.md)
+[Installation guide](docs/INSTALL.md) · [Move to a Windows AI server](docs/WINDOWS-SERVER.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [How it works](docs/ARCHITECTURE.md) · [Credits](THIRD_PARTY_NOTICES.md)
 
 > **Development preview.** Includes the PC bridge and newly written Franky firmware source for the LAFVIN LA064. The firmware has its own application code and frog artwork, with licensed Espressif codec drivers. Read the [firmware guide](docs/FIRMWARE.md) before building or flashing; the release does not bundle inherited XiaoKe firmware.
 
@@ -19,6 +19,7 @@ Franky's PC bridge brings together English speech recognition, an LM Studio chat
 | Natural male voices | 11 choices with previews; Liam is the default |
 | Easy Windows launch | Double-click setup, start, and connection check |
 | Volume and brightness commands | Spoken commands, web sliders, persistent levels in new firmware |
+| Stop and service readiness | BOOT/web Stop, background speech loading, clear bridge readiness checks |
 | Hands-free option | Say Hello Franky, pause by voice, resume with BOOT; experimental |
 | Robot firmware | Newly written source, animated frog face, build/flash tools |
 | Optional online providers | OpenAI API, OpenRouter free models, Gemini; bring your own key |
@@ -28,9 +29,11 @@ Franky's PC bridge brings together English speech recognition, an LM Studio chat
 1. Read [what you need](docs/INSTALL.md#1-get-ready).
 2. Download the Windows ZIP from [Releases](https://github.com/digitalrcs/DigitalRCS-Local-LLM-Chatbot/releases), then **Extract All**.
 3. Install Python 3.13 (64-bit), prepare LM Studio, and double-click **START-HERE.cmd**.
-4. Double-click **START-FRANKY.cmd** and open **http://localhost:8766** to try the voices.
+4. Double-click **START-FRANKY.cmd** and open **http://localhost:8766** to check readiness and try the voices. Speech models prepare in the background; the page explains any setup problems.
 
 The [step-by-step guide](docs/INSTALL.md) explains every stage, including what success looks like. You do not need to edit code.
+
+To run everything on your Windows AI server, follow [Move the bridge and website](docs/WINDOWS-SERVER.md). The website is included in the bridge, and **SET-BRIDGE-ADDRESS.cmd** records the LAN address shown in its connection settings. Franky's device settings page remains on the ESP32.
 
 ## Meet the new Franky
 

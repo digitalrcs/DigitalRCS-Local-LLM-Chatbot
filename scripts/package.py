@@ -4,11 +4,14 @@ from pathlib import Path
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.3.2-preview.1"
+VERSION = "0.3.3-preview.1"
 FILES = [
     "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "SECURITY.md", "CONTRIBUTING.md", "CHANGELOG.md",
     "START-HERE.cmd", "START-FRANKY.cmd", "CHECK-SETUP.cmd",
     "bridge/server.py", "bridge/settings.py", "bridge/configure.py", "bridge/config.example.json",
+    "bridge/readiness.py", "tests/test_readiness.py", "tests/test_configure.py",
+    "bridge/host_config.py", "tests/test_host_config.py", "SET-BRIDGE-ADDRESS.cmd", "scripts/host.ps1", "docs/WINDOWS-SERVER.md",
+    "tests/ui_pages_test.cjs", "tests/interaction_test.cpp", "tests/audio_playback_test.py", "tests/network_cancel_test.py",
     "bridge/neural_voice.py", "bridge/voice_settings.py", "bridge/device_commands.py",
     "bridge/download_voice.py", "bridge/speak.ps1", "bridge/voices.html",
     "bridge/requirements.txt", "bridge/requirements-lock.txt",

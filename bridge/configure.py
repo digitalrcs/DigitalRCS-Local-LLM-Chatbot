@@ -50,7 +50,8 @@ def main():
                 print("Online mode sends transcribed conversation text to this provider. Speech stays local.")
                 print("OpenAI is metered. OpenRouter is restricted to free model IDs. Gemini can charge on paid accounts/models.")
                 if input("Continue with this online provider? [y/N]: ").strip().lower() != "y":
-                    return
+                    print("Setup cancelled. Existing provider settings were not changed.")
+                    return 2
                 prepare_key(provider)
                 url = PROVIDERS[provider]["url"]
             models = list_models({"provider": provider, "base_url": url})
@@ -71,7 +72,7 @@ def main():
                 model = value
             save_settings(url, model, provider=provider)
             print("Provider saved. Restart START-FRANKY to use the new settings.")
-            return
+            return 0
         except (requests.RequestException, ValueError, KeyError, TypeError, OSError) as exc:
             # Never print remote response bodies or exception request headers.
             if isinstance(exc, ProviderError):
@@ -79,7 +80,7 @@ def main():
             else:
                 print("Setup could not finish. Check the selected number, address, credentials, and model access.")
             if input("Try again? [Y/n]: ").strip().lower() == "n":
-                raise SystemExit(1)
+                return 1
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

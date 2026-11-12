@@ -24,8 +24,8 @@ def check_response(response):
     if not 200 <= response.status_code < 300:
         raise ProviderError("Provider request failed. Check the selected model and service status.")
 
-def list_models(config):
-    response = requests.get(endpoint(config) + "/models", headers=headers_for(config["provider"]), timeout=(5, 20), allow_redirects=False)
+def list_models(config, timeout=(5, 20)):
+    response = requests.get(endpoint(config) + "/models", headers=headers_for(config["provider"]), timeout=timeout, allow_redirects=False)
     check_response(response)
     ids = [item["id"] for item in response.json()["data"] if isinstance(item, dict) and isinstance(item.get("id"), str)]
     if config["provider"] == "openrouter":

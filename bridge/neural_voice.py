@@ -6,7 +6,18 @@ from voice_settings import current_voice, CATALOG
 
 MODEL_DIR = Path(__file__).resolve().parent / "models" / "kokoro"
 _model = None
-_lock = threading.Lock()
+_lock = threading.RLock()
+
+
+def prepare():
+    """Load the local model once without generating or playing speech."""
+    global _model
+    with _lock:
+        if _model is None:
+            from kokoro_onnx import Kokoro
+            _model = Kokoro(str(MODEL_DIR / "kokoro-v1.0.onnx"),
+                            str(MODEL_DIR / "voices-v1.0.bin"))
+        return _model
 
 def pcm16(samples, sample_rate):
     audio = np.asarray(samples)
@@ -17,14 +28,9 @@ def pcm16(samples, sample_rate):
     return (np.clip(audio, -1, 1) * 32767).astype("<i2").tobytes()
 
 def synthesize(text, voice=None):
-    global _model
     voice = voice or current_voice()
     if voice not in CATALOG:
         raise ValueError("Unknown voice")
     with _lock:
-        if _model is None:
-            from kokoro_onnx import Kokoro
-            _model = Kokoro(str(MODEL_DIR / "kokoro-v1.0.onnx"),
-                            str(MODEL_DIR / "voices-v1.0.bin"))
-        samples, rate = _model.create(text, voice=voice, speed=1.0, lang=CATALOG[voice]['lang'])
+        samples, rate = prepare().create(text, voice=voice, speed=1.0, lang=CATALOG[voice]['lang'])
         return pcm16(samples, rate)

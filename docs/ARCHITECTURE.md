@@ -8,11 +8,14 @@ The wizard writes `bridge/config.json`, which Git and the release builder exclud
 
 `WHISPER_MODEL` defaults to `base.en`. `TTS_ENGINE` defaults to `kokoro`; `windows` selects the optional Windows SAPI fallback. The voice picker requires Kokoro. Voice choice persists in ignored `bridge/voice_settings.json`. Models live in ignored `bridge/models/`.
 
+`public_bridge_url` optionally records the robot-facing LAN address displayed in the dashboard; **SET-BRIDGE-ADDRESS.cmd** edits it without changing provider configuration. `BRIDGE_PUBLIC_URL` overrides the stored value. This is an advertised HTTP IPv4/DNS origin on port 8766, not a bind address or automatic device reconfiguration. The bridge and its website share the same process and port. See [Windows AI-server migration](WINDOWS-SERVER.md).
+
 ## Endpoints
 
 | Route | Request | Response |
 | --- | --- | --- |
 | GET `/health` | None | Service status and configured model details; not an upstream readiness probe |
+| GET `/ready` | None | Cached readiness: overall `starting`, `ready`, or `degraded`, plus recognition, voice, and chat checks with status/message; always HTTP 200 |
 | GET `/` | None | Voice picker |
 | GET `/voices` | None | Voice catalog and selected ID |
 | POST `/voice` | JSON `{"voice":"am_liam"}` | Persisted selection |
@@ -24,6 +27,8 @@ The wizard writes `bridge/config.json`, which Git and the release builder exclud
 | POST `/v1/audio/speech` | JSON `{"input":"Hello"}` | Raw signed little-endian PCM16, mono 24 kHz, <=60 seconds |
 
 The `/v1` naming is a limited compatibility contract, not a complete implementation of any cloud API. Speech responses are raw PCM, not WAV; voice previews are WAV. Chat requests accept 1–16 messages of at most 8,000 characters each and use a configurable output limit (1200 by default, 128–4096 allowed).
+
+On bridge startup, independent background workers load the local speech models under the same locks used by inference, so the dashboard remains available during preparation. These checks do not generate speech or chat. The selected provider's model listing is checked with short connection/read timeouts and refreshed no more than once every 30 seconds; failed speech loads also retry after 30 seconds. `/ready` reads cached results only, so browser polling never creates extra provider requests. A listed model does not prove inference access, quota, speed, or microphone/speaker quality. Windows speech reports configuration availability rather than a completed voice test.
 
 ## Device controls
 
@@ -41,6 +46,10 @@ CPU speech recognition is serialized. Speech generation is serialized to protect
 
 The main task handles the LCD, setup HTTP server, DNS, buttons, and persisted settings. One background task owns microphone/speaker access and blocking bridge requests. Bounded queues carry work and status/control results. Settings changes are rejected while a conversation is active. Microphone recordings and speech buffers use PSRAM, with explicit duration and response-size limits.
 
-The listening-settings endpoint is an exception to idle-only writes: it can cancel capture during background listening or a question. Cancellation uses an atomic flag; only the audio task touches I2S. Pause persists in NVS. Background energy-gated utterances are bounded to four seconds, with pre-roll and trailing silence, and sent only to the local wake endpoint. Accepted wake phrases cause a ready cue, then a separate bounded question recording. Capture is half-duplex and suspended during recognition/playback. See [hands-free limitations](HANDS-FREE.md).
+Passive wake monitoring remains available to web controls: a settings write cancels the background worker, and web Talk queues one recording after it completes. Active conversation writes remain rejected. `POST /controls` accepts one or both of `volume`/`brightness`; `POST /listening` accepts any of `enabled`/`paused`/`threshold`. Existing full payloads remain supported. `/status` retains worker `busy` and `wake_monitoring` flags and adds `stopping`, `pending_manual`, and `follow_up_pending` so Stop also works between queued actions.
+
+`POST /stop` (empty JSON, normal device-page token) and BOOT during active work cancel capture, playback, pending manual jobs, and follow-ups without persisting pause. Listening pause also cancels current work and persists in NVS. Cancellation uses an atomic flag; only the audio worker touches I2S and its HTTP socket. HTTP response polling and reads observe cancellation, while DNS/connect and individual socket writes retain platform blocking limits. Cancelled queued events cannot change settings or reopen a follow-up. The bridge/provider may still finish a request that it already received.
+
+Background energy-gated utterances are bounded to four seconds, with pre-roll and trailing silence, and sent only to the local wake endpoint. Accepted wake phrases cause a ready cue, then a separate bounded question recording. Capture is half-duplex and suspended during recognition/playback. See [hands-free limitations](HANDS-FREE.md).
 
 Question and follow-up capture waits about 15 seconds for speech and uses 1.5 seconds of trailing silence. After a successful hands-free reply, another ready chime opens a follow-up window; silence returns to wake monitoring without a model call. Wake capture retains an 800 ms tail. Normal idle wake retries wait 40 ms rather than 700 ms, with a longer error backoff. Ready/pause cues are original PCM bell synthesis; the thinking cue remains cached local speech.

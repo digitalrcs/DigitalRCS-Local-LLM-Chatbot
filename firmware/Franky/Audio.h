@@ -83,10 +83,10 @@ public:
     }
     stop(); return count;
   }
-  bool play(const uint8_t* pcm,size_t bytes,int volume) {
-    if (!bytes || bytes%2 || !mode(false)) return false;
+  bool play(const uint8_t* pcm,size_t bytes,int volume,const std::atomic<bool>& cancel) {
+    if (cancel.load() || !bytes || bytes%2 || !mode(false)) return false;
     int16_t stereo[512]; size_t offset=0;
-    while(offset<bytes) {
+    while(offset<bytes && !cancel.load()) {
       size_t n=min(size_t(256),(bytes-offset)/2);
       for(size_t i=0;i<n;i++) {
         int16_t value=int16_t(uint16_t(pcm[offset+2*i]) | uint16_t(pcm[offset+2*i+1])<<8);
@@ -97,7 +97,8 @@ public:
       if(sent!=n*4) { stop(); return false; }
       offset+=n*2; delay(1);
     }
-    delay(100); stop(); return true;
+    if(!cancel.load())delay(100);
+    stop(); return !cancel.load();
   }
   // Record an utterance with 256 ms pre-roll and 800 ms trailing silence.
   // Bounded waiting and cancellation keep pause/BOOT responsive. Energy gating

@@ -5,6 +5,7 @@
 #include <WiFiClient.h>
 #include <ArduinoJson.h>
 #include <esp_heap_caps.h>
+#include "CancellableClient.h"
 
 class ReplyBuffer : public Stream {
 public:
@@ -20,11 +21,12 @@ public:
 };
 class BridgeClient {
   String base;
+  const std::atomic<bool>& cancel;
 public:
-  explicit BridgeClient(const String& url):base(url) {}
+  BridgeClient(const String& url,const std::atomic<bool>& flag):base(url),cancel(flag) {}
   bool request(const char* endpoint,const char* type,const uint8_t* body,size_t length,ReplyBuffer& reply,uint16_t timeout=60000) {
-    if(!reply.data) return false;
-    WiFiClient transport; HTTPClient http;
+    if(cancel.load() || !reply.data) return false;
+    CancellableClient transport(cancel); HTTPClient http;
     http.setConnectTimeout(3000); http.setTimeout(timeout); http.setReuse(false);
     if(!http.begin(transport,base+endpoint)) return false;
     http.addHeader("Content-Type",type);
@@ -34,7 +36,7 @@ public:
       int received=http.writeToStream(&reply);
       ok=received>=0 && !reply.overflow && reply.used>0;
     }
-    http.end(); return ok;
+    http.end(); return ok && !cancel.load();
   }
   bool json(const char* endpoint,JsonDocument& input,JsonDocument& output) {
     String payload; serializeJson(input,payload); ReplyBuffer reply(16000);

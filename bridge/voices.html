@@ -2,21 +2,90 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Franky's Voices — DigitalRCS</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#e8ecff;font:16px/1.5 system-ui,sans-serif}main{max-width:650px;margin:auto;padding:32px 20px}h1{margin-bottom:4px;font-size:30px}.muted{color:#a7b3d2}section{padding:22px;border:1px solid #334368;border-radius:16px;background:#151c33;margin:20px 0}label{display:block;margin-bottom:8px}select,button{font:inherit;border-radius:9px;padding:12px;border:1px solid #52698d}select{width:100%;background:#0b1020;color:#fff}button{background:#244472;color:#fff;cursor:pointer}button.primary{background:#79b9ff;color:#071b32;font-weight:650}button:disabled{opacity:.5;cursor:wait}.row{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}audio{width:100%;margin:12px 0}#message{min-height:48px}a{color:#8acbff}
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#e8ecff;font:16px/1.5 system-ui,sans-serif}main{max-width:650px;margin:auto;padding:32px 20px}h1{margin-bottom:4px;font-size:30px}.muted{color:#a7b3d2}section{padding:22px;border:1px solid #334368;border-radius:16px;background:#151c33;margin:20px 0}label{display:block;margin-bottom:8px}select,button{font:inherit;border-radius:9px;padding:12px;border:1px solid #52698d}select{width:100%;background:#0b1020;color:#fff}button{background:#244472;color:#fff;cursor:pointer}button.primary{background:#79b9ff;color:#071b32;font-weight:650}button:disabled{opacity:.5;cursor:wait}.row{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}audio{width:100%;margin:12px 0}#message{min-height:48px}a{color:#8acbff}.readiness{padding:18px 22px}.readiness h2{font-size:21px;margin:0 0 10px}.readiness dl{margin:0}.readiness dt{font-weight:650;margin-top:12px}.readiness dd{margin:3px 0 0;color:#a7b3d2;overflow-wrap:anywhere}
+.address{font-family:ui-monospace,Consolas,monospace;user-select:all}
 </style></head><body><main>
 <div class="muted">DigitalRCS · Franky</div><h1>Find Franky's voice</h1>
 <p class="muted">Listen first, then pick your favorite. Every voice runs locally on your PC.</p>
 <p id="provider" class="muted"></p>
+<section class="readiness" aria-labelledby="readyTitle"><h2 id="readyTitle">Is Franky ready?</h2>
+<p id="readyState" role="status" aria-live="polite">Checking the voice bridge…</p>
+<dl><dt>Speech recognition</dt><dd id="recognitionReady">Waiting for a check…</dd><dt>Voice engine</dt><dd id="voiceReady">Waiting for a check…</dd><dt>Chat model</dt><dd id="chatReady">Waiting for a check…</dd></dl>
+<p class="muted">Checks refresh automatically. Chat availability does not guarantee a successful answer or test the robot’s microphone and speaker.</p></section>
 <section><p id="current" role="status">Loading current voice…</p>
 <label for="voice">Male voice</label><select id="voice" disabled></select>
 <div class="row"><button id="preview" disabled>Listen to preview</button><button id="save" class="primary" disabled>Use this voice</button></div>
 <audio id="audio" controls hidden></audio><p id="message" role="status"></p>
 <p class="muted">Previewing does not change Franky's voice. Your saved choice takes effect on his next spoken reply and survives a service restart.</p></section>
+<section class="readiness" aria-labelledby="connectionTitle"><h2 id="connectionTitle">Connection settings</h2>
+<p class="muted">This website and the voice bridge run together on the AI server, using port 8766.</p>
+<dl><dt>Robot / phone bridge address</dt><dd class="address" id="publicBridgeAddress">Loading the saved address…</dd></dl>
+<p class="muted" id="publicBridgeHelp"></p>
+<dl><dt>LM Studio address (from bridge server)</dt><dd class="address" id="lmStudioAddress">Loading the saved address…</dd></dl>
+<p class="muted" id="lmStudioHelp"></p>
+<p class="muted">Wi-Fi and device settings stay on Franky’s own IP address, shown on his screen. Select and copy the bridge address above into his connection settings.</p></section>
 <p class="muted">American and British accents can sound quite different. Try Fenrir, Puck, George, and Lewis alongside Michael to compare.</p>
 </main><script>
-const $=id=>document.getElementById(id);let voices=[],blobUrl;
+const $=id=>document.getElementById(id);
+let voices=[],blobUrl,catalogueLoaded=false,kokoro=false,voiceReady=false,previewing=false;
 function label(id){return voices.find(v=>v.id===id)?.name||id}
-async function load(){try{const r=await fetch('/voices');if(!r.ok)throw Error('Cannot load voices');const d=await r.json();voices=d.voices;$('provider').textContent='AI provider: '+(d.provider||'lmstudio')+'. Change it with CHANGE-PROVIDER on your PC.';for(const v of voices)$('voice').add(new Option(v.name,v.id));$('voice').value=d.selected;$('current').textContent='Current voice: '+label(d.selected);if(d.engine!=='kokoro')throw Error('The bridge must use Kokoro to apply these choices.');$('voice').disabled=$('preview').disabled=$('save').disabled=false}catch(e){$('message').textContent=e.message}}
-$('preview').onclick=async()=>{const previewVoice=$('voice').value;$('preview').disabled=true;$('message').textContent='Generating your preview…';try{const r=await fetch('/voice/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({voice:previewVoice})});if(!r.ok)throw Error('Could not generate preview. Please try again.');const blob=await r.blob();if(blobUrl)URL.revokeObjectURL(blobUrl);blobUrl=URL.createObjectURL(blob);$('audio').src=blobUrl;$('audio').hidden=false;try{await $('audio').play()}catch(e){}$('message').textContent='Preview ready: '+label(previewVoice)+'. Use the audio controls to listen again.'}catch(e){$('message').textContent=e.message}finally{$('preview').disabled=false}};
-$('save').onclick=async()=>{$('save').disabled=true;try{const r=await fetch('/voice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({voice:$('voice').value})});if(!r.ok)throw Error('Voice could not be saved.');const d=await r.json();$('current').textContent='Current voice: '+label(d.selected);$('message').textContent='Saved. Franky will use '+label(d.selected)+' next time he speaks.'}catch(e){$('message').textContent=e.message}finally{$('save').disabled=false}};load();
+function previewButton(){$('preview').disabled=!catalogueLoaded||!kokoro||!voiceReady||previewing}
+async function request(path,options={},timeout=6000){
+  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeout);
+  try{
+    const response=await fetch(path,{...options,signal:controller.signal,cache:'no-store'});
+    if(!response.ok)throw Error('The bridge could not complete this request. Check its status and try again.');
+    return options.audio?await response.blob():await response.json();
+  }catch(e){if(e.name==='AbortError')throw Error('The bridge did not respond in time. Please try again.');throw e}
+  finally{clearTimeout(timer)}
+}
+async function load(){
+  try{
+    const d=await request('/voices');voices=d.voices;kokoro=d.engine==='kokoro';
+    $('provider').textContent='AI provider: '+(d.provider||'lmstudio')+'. Change it with CHANGE-PROVIDER on your PC.';
+    const publicAddress=typeof d.public_bridge_url==='string'?d.public_bridge_url.trim():'';
+    const localModelAddress=typeof d.lm_studio_url==='string'?d.lm_studio_url.trim():'';
+    $('publicBridgeAddress').textContent=publicAddress||'Not set';
+    $('publicBridgeHelp').textContent=publicAddress?'Use this saved LAN address on Franky and on a phone connected to the same home network.':'Run SET-BRIDGE-ADDRESS.cmd on the bridge server to set its LAN address. The browser’s localhost address cannot be used by the robot or phone.';
+    $('lmStudioAddress').textContent=localModelAddress||'Not configured';
+    $('lmStudioHelp').textContent=!d.provider||d.provider==='lmstudio'?'The bridge uses this address to reach LM Studio. A localhost address here refers to the bridge server itself.':'Saved local-model address only. The active chat provider is '+d.provider+'; LM Studio is not currently used.';
+    $('voice').replaceChildren();for(const v of voices)$('voice').add(new Option(v.name,v.id));
+    $('voice').value=d.selected;$('current').textContent='Current voice: '+label(d.selected);
+    catalogueLoaded=true;$('voice').disabled=$('save').disabled=!kokoro;
+    if(!kokoro)$('message').textContent='The bridge must use Kokoro to apply these voice choices.';
+    previewButton();
+  }catch(e){$('message').textContent=e.message}
+}
+async function readiness(){
+  try{
+    const d=await request('/ready');
+    $('readyState').textContent=d.status==='ready'?'Checks passed':d.status==='starting'?'Starting Franky’s speech services…':'Franky needs attention';
+    for(const key of ['recognition','voice','chat'])$(key+'Ready').textContent=d.checks[key].message;
+    voiceReady=d.checks.voice.status==='ready';
+  }catch(e){
+    voiceReady=false;$('readyState').textContent='Voice bridge is unreachable · reconnecting…';
+    for(const key of ['recognition','voice','chat'])$(key+'Ready').textContent='Status unavailable. Keep START-FRANKY running on the PC.';
+  }
+  previewButton();
+}
+$('preview').onclick=async()=>{
+  const previewVoice=$('voice').value;previewing=true;previewButton();$('message').textContent='Generating your preview…';
+  try{
+    const blob=await request('/voice/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({voice:previewVoice}),audio:true},60000);
+    if(blobUrl)URL.revokeObjectURL(blobUrl);blobUrl=URL.createObjectURL(blob);
+    $('audio').src=blobUrl;$('audio').hidden=false;try{await $('audio').play()}catch(e){}
+    $('message').textContent='Preview ready: '+label(previewVoice)+'. Use the audio controls to listen again.';
+  }catch(e){$('message').textContent=e.message}
+  finally{previewing=false;previewButton()}
+};
+$('save').onclick=async()=>{
+  $('save').disabled=true;
+  try{
+    const d=await request('/voice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({voice:$('voice').value})});
+    $('current').textContent='Current voice: '+label(d.selected);$('message').textContent='Saved. Franky will use '+label(d.selected)+' next time he speaks.';
+  }catch(e){$('message').textContent=e.message}
+  finally{$('save').disabled=!kokoro}
+};
+async function poll(){await Promise.all([readiness(),catalogueLoaded?Promise.resolve():load()]);setTimeout(poll,3000)}
+poll();
 </script></body></html>

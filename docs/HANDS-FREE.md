@@ -14,7 +14,7 @@ After each hands-free answer, a quiet ready chime opens another 15-second window
 
 Before requesting the model's answer, Franky says **One moment, let me think**. This neutral acknowledgment does not promise that he can fulfill the request. Simple volume/brightness commands receive their normal confirmation instead. Short voice cues are cached on the PC for the selected voice; the first use can take longer.
 
-Say the wake phrase separately from the question. Recognition pauses while the PC checks a snippet, while Franky answers, and briefly between recordings. He cannot hear an interruption while speaking. If he misses you, wait a moment and repeat **Hello Franky**. The BOOT hold-to-talk option remains available; during a wake check it may take several seconds to become available.
+Say the wake phrase separately from the question. Recognition pauses while the PC checks a snippet, while Franky answers, and briefly between recordings. He cannot hear a spoken interruption while speaking. If he misses you, wait a moment and repeat **Hello Franky**. During passive wake listening, hold BOOT to cancel the wake check and start a recording once the worker is available. Keep holding until the screen says **Listening**; releasing early cancels the pending recording. Web **Talk to Franky** also takes over passive listening; wait for **Listening** before speaking.
 
 ## Pause and resume
 
@@ -25,7 +25,15 @@ Say the wake phrase separately from the question. Recognition pauses while the P
 - The LCD shows **Listening paused**. The pause is saved and survives power cycling.
 - **Press BOOT once to resume.** You can also choose **Resume listening** on the page. With hands-free disabled, the next BOOT hold starts a normal recording.
 
-Pause stops microphone capture. A snippet already sent to the local PC may finish processing, but its result is discarded after cancellation. An answer or voice cue already playing may finish; this is microphone pause, not a speaker mute. Pressing BOOT while powering on still selects ESP32 download mode, so use BOOT only after Franky has started.
+Pause stops microphone capture and cancels the current reply and follow-up. A snippet or question already sent to the PC/provider may finish processing there, but the device discards its cancelled result. Pressing BOOT while powering on still selects ESP32 download mode, so use BOOT only after Franky has started.
+
+## Stop a reply
+
+During an active recording, question, or reply, press **BOOT** once or choose **Stop current reply** on the device page. Stop interrupts playback between audio chunks, cancels pending replies and follow-ups, and leaves hands-free enabled for a later **Hello Franky**. It does not persist a microphone pause; use **Pause listening** for that.
+
+The page shows **Stopping current request** until the audio worker releases the current operation. Response waits and downloads check cancellation; initial DNS/connection and a blocked network upload can still take several seconds to return. Stopping on the robot does not guarantee cancellation of computation or billing already started by the selected provider.
+
+Volume, brightness, connection settings, and web Talk are available during passive wake listening. Saving a setting cancels that background capture so an old result cannot undo the change. Settings remain locked during an active conversation; Stop it first if needed. Open pages refresh controls you have not edited, and save only changed volume/brightness or listening fields.
 
 The after-answer ready chime is a slightly longer, stronger rising sound than the initial wake chime. It uses the same volume setting. Button-started questions also open follow-up windows when hands-free mode is enabled. If a ready cue fails to download or play, the firmware shows **Ready chime unavailable** instead of silently opening a question window. Serial diagnostics report cue playback results without conversation text.
 
