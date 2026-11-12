@@ -41,6 +41,21 @@ When moving computers, run setup on the destination to create its own `.venv`. Y
 
 Stop the bridge with **Ctrl+C** before repairing its installation. Use PowerShell in the extracted project folder; the commands below use that folder's Python environment.
 
+### Voice fails while recognition and chat are ready
+
+First check `bridge/models/kokoro`. It must contain both completed files: **kokoro-v1.0.onnx** and **voices-v1.0.bin**. If only `.part` files exist, the downloads have not finished. Kokoro may report `NO_SUCHFILE` for the missing final model even though Python, the packages, speech recognition, and LM Studio are working.
+
+For an installation at `C:\Data\FrankyChat`, open PowerShell and run:
+
+```powershell
+Set-Location 'C:\Data\FrankyChat'
+& .\.venv\Scripts\python.exe .\bridge\download_voice.py
+```
+
+Replace the folder if you installed elsewhere. Leave the window open until the command finishes successfully and **both final filenames exist**. The downloader retries unfinished files from the beginning, not from the partial size; already completed files are kept. **Do not rename `.part` files**: the downloader gives them their final names only after a successful download.
+
+Then run **START-FRANKY.cmd**, **CHECK-SETUP.cmd**, and **Listen to preview**. This retry downloads the missing voice files without changing provider or voice settings. Reinstalling Python or choosing a different voice does not complete these downloads.
+
 ### Missing DLL or Visual C++ runtime
 
 For errors mentioning `VCRUNTIME140.dll`, `VCRUNTIME140_1.dll`, `MSVCP140.dll`, or a DLL load failure involving ONNX Runtime/CTranslate2, install or repair the **X64 C++ runtime** from step 1, then restart the bridge. A generic DLL error can have other causes, so keep the exact error if this does not fix it. Use 64-bit Python and the locked packages for this project.

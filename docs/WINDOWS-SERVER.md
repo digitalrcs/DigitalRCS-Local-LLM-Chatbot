@@ -46,6 +46,8 @@ Because the bridge will run on the same machine, it uses `http://127.0.0.1:1234/
 
 The page's **Connection settings** displays the advertised bridge address and the separate LM Studio address. Saving the advertised address does not change Windows networking, the listen port, firewall rules, or Franky's stored device settings. Restart the bridge after changing configuration so the dashboard uses the new values.
 
+If recognition and chat are ready but voice fails, check for unfinished Kokoro downloads. Only `.part` files in `bridge/models/kokoro` means setup did not finish those downloads. Use the [exact PowerShell retry steps](VOICE-SETUP.md#voice-fails-while-recognition-and-chat-are-ready), wait for both final files, then restart and preview. Do not rename `.part` files.
+
 Keep `192.168.5.250` stable using your existing static address or a DHCP reservation. The bridge listens on port 8766 on the server's interfaces. The advertised address is the reachable URL you give to the robot and other browsers.
 
 ## 4. Allow access from your home network

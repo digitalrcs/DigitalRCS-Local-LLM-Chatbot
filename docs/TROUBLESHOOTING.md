@@ -14,6 +14,7 @@ The bridge page at **http://localhost:8766** shows separate speech recognition, 
 | Model is listed but replies fail | Test the model inside LM Studio; make sure it is a chat model and fits in memory. Some models take longer than the bridge's 50-second read timeout. |
 | Port already in use | An existing bridge may already be running. Use its browser page or close its window before starting another copy. |
 | Voice preview fails | Check the bridge window and follow [voice software and download repairs](VOICE-SETUP.md#if-a-speech-component-is-missing). Confirm both Kokoro files and the X64 C++ runtime; then restart and preview again. |
+| Voice fails or reports NO_SUCHFILE; recognition and chat work; only Kokoro .part files exist | The model downloads are unfinished. Follow the [Kokoro download retry](VOICE-SETUP.md#voice-fails-while-recognition-and-chat-are-ready); wait for both final files, restart the bridge, and preview. Do not rename `.part` files. |
 | Missing VCRUNTIME/MSVCP DLL or native speech-library load error | Install or repair the [Microsoft X64 C++ runtime](VOICE-SETUP.md#missing-dll-or-visual-c-runtime). START-HERE does not install it; a generic DLL error may need further diagnosis. |
 | eSpeak NG cannot load | The Python package normally bundles it. Use the [eSpeak-specific steps](VOICE-SETUP.md#espeak-ng-library-could-not-load), including the official x64 installer only if needed. |
 | Saved voice did not change | Click **Use this voice**; preview alone does not select it. |

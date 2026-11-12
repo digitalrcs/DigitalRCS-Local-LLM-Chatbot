@@ -50,6 +50,8 @@ There are two roles: the **bridge computer** runs this download; the **LM Studio
 5. Wait for the voice and English recognition downloads. The Kokoro files alone are about 354 MB. Setup also installs the speech libraries, including the bundled eSpeak pronunciation component. See [what each component does](VOICE-SETUP.md#2-let-start-here-install-the-speech-components). A slow connection may take longer.
 6. Look for **Setup complete**. Then press a key to close the window.
 
+Keep the setup window open until the downloads finish. If voice fails but recognition and chat work, and `bridge/models/kokoro` contains only `.part` files, follow the [unfinished Kokoro download recovery](VOICE-SETUP.md#voice-fails-while-recognition-and-chat-are-ready). Do not rename the partial files.
+
 If you see an error, read it before closing. Running setup again retries installation and downloads; it does not erase your chosen voice. You can also rerun it to select another LM Studio address or model. Restart the bridge afterward.
 
 **Setup complete** is not a voice test. Finish the preview step below to check that the speech libraries and voice files work together on this computer.
