@@ -18,14 +18,34 @@ Extract the project to its permanent folder, then run **START-HERE.cmd** there. 
 | Kokoro ONNX and ONNX Runtime | Generate Franky's spoken replies | Setup installs the pinned Python packages in `.venv` |
 | Phonemizer and eSpeak NG | Turn words into pronunciation symbols for Kokoro | Setup installs `phonemizer` and `espeakng-loader`, which normally supplies the eSpeak library and language data |
 | Kokoro model and voice pack | Supply Liam and the other selectable voices | Setup downloads `kokoro-v1.0.onnx` and `voices-v1.0.bin` to `bridge/models/kokoro` (about 354 MB together) |
-| faster-whisper and the English `base.en` model | Recognize the question Franky records | Setup installs the packages and downloads the model under `bridge/models` |
+| faster-whisper and the English `base.en` and `tiny.en` models | Recognize the question Franky records (`base.en`) and hands-free wake phrases (`tiny.en`) | Setup installs the packages and downloads the models under `bridge/models` |
 | LM Studio chat model | Write an answer to the recognized question | Download and load separately in LM Studio |
 
 These speech libraries and model files are sometimes described as “voice drivers.” They are separate from the ESP32 firmware and from the USB driver used to flash the robot. Liam comes from the Kokoro voice pack; the default setup does not require adding Liam as a Windows system voice.
 
+### Choosing a chat model for speed
+
+Franky requests one to three spoken sentences. Compare models on your own hardware using the bridge's `Franky timing:` log lines, and keep the selected model loaded in LM Studio. The bridge can request reasoning off for Qwen3-family templates through `disable_thinking`; this does not turn off Gemma's reasoning. The default `max_output_tokens` is **1200**, including reasoning tokens. A limit of 256 can leave Gemma without enough room to produce an answer, even for a short question. Explicit saved limits are preserved; see [provider settings](PROVIDERS.md).
+
 The default bridge uses CPU speech processing. Separate CUDA/cuDNN or FFmpeg installations are not prerequisites for this setup. LM Studio's chat model has its own hardware requirements.
 
 When moving computers, run setup on the destination to create its own `.venv`. You may copy `bridge/models` to reuse downloaded speech models, but that does not replace package installation or the Windows runtime. See the [Windows AI-server guide](WINDOWS-SERVER.md).
+
+### Hugging Face unauthenticated-download warning
+
+The warning about unauthenticated requests to the HF Hub concerns downloading the speech-recognition models. It is not a voice-engine failure. If all readiness checks pass, Franky can run with the downloaded models; authentication does not make normal local conversations faster.
+
+For authenticated downloads, open a separate PowerShell window **on the AI server**, using the same Windows account that runs START-FRANKY. For an installation at `C:\Data\FrankyChat`, run:
+
+```powershell
+Set-Location 'C:\Data\FrankyChat'
+& .\.venv\Scripts\hf.exe auth login --no-add-to-git-credential
+& .\.venv\Scripts\hf.exe auth whoami
+```
+
+Follow the browser sign-in instructions. If you choose to enter an access token instead, create a read token in your [Hugging Face token settings](https://huggingface.co/settings/tokens) and enter it only in the local login prompt. Do not paste it into a chat, project file, or GitHub. Git credential storage is unnecessary for Franky's downloads.
+
+The [Hugging Face CLI](https://huggingface.co/docs/huggingface_hub/en/guides/cli) saves the login for that Windows account. An explicitly configured [`HF_TOKEN`](https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables#hf_token) overrides the cached login; a separate environment variable is not required after a successful login. If `whoami` succeeds, stop the bridge with Ctrl+C and start START-FRANKY again. Do not upgrade the project's locked packages just to address this warning.
 
 ## 3. Verify speech before connecting Franky
 
@@ -69,7 +89,7 @@ For an already configured installation, these focused retries keep the saved pro
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r .\bridge\requirements-lock.txt
 .\.venv\Scripts\python.exe .\bridge\download_voice.py
-.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'bridge'); from server import recognizer; recognizer(); print('English speech model ready')"
+.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'bridge'); from server import recognizer, wake_recognizer; recognizer(); wake_recognizer(); print('English speech models ready')"
 ```
 
 Run the commands in order and stop if one reports an error. The voice downloader skips existing final files; it retries an interrupted `.part` download. If an error identifies an existing Kokoro file as corrupt, move **that file** out of `bridge/models/kokoro` as a backup, then rerun the downloader. Do not replace the model filenames with files from a different Kokoro version.

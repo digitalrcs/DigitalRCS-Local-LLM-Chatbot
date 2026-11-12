@@ -15,6 +15,8 @@
 #include "ConnectionRules.h"
 #include "SetupPage.h"
 #include "Interaction.h"
+#include "FrameReader.h"
+#include "VoiceTypes.h"
 
 struct Job { char url[160]; int volume,brightness,threshold; bool held; uint8_t kind; };
 struct Event { Mood mood; bool done,settings,engaged,pause,followUp; int volume,brightness; char text[200]; };
@@ -40,129 +42,272 @@ void notify(Mood m,const String& text,bool done=false,bool settings=false,int vo
   text.toCharArray(e.text,sizeof(e.text)); xQueueSend(events,&e,portMAX_DELAY);
 }
 
+// ---------------------------------------------------------------------------
+// Voice worker. Runs on its own FreeRTOS task (core 0) and owns the microphone,
+// speaker and bridge connections. It reports progress to the main loop only
+// through notify(); the main loop cancels it only through cancelListening.
+// ---------------------------------------------------------------------------
+
+// Chimes never change, so each is fetched from the bridge once and kept in
+// PSRAM. Only the voice task touches this cache, so it needs no lock.
+CachedCue cueCache[]={{"listening",nullptr,0},{"followup",nullptr,0},{"thinking",nullptr,0},{"paused",nullptr,0}};
+
+CachedCue* cachedCue(BridgeClient& client,const char* kind) {
+  for(auto& cue:cueCache) {
+    if(strcmp(cue.kind,kind)) continue;
+    if(!cue.data) {
+      ReplyBuffer reply(480000);
+      if(!client.cue(kind,reply)) return nullptr;
+      cue.data=static_cast<uint8_t*>(heap_caps_malloc(reply.used,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT));
+      if(!cue.data) return nullptr;
+      memcpy(cue.data,reply.data,reply.used); cue.bytes=reply.used;
+    }
+    return &cue;
+  }
+  return nullptr;  // Not a chime (for example "welcome", which uses the selected voice).
+}
+
 bool playCue(BridgeClient& client,const char* kind,int level) {
-  ReplyBuffer cue(480000);
-  bool ok=client.cue(kind,cue)&&audio.play(cue.data,cue.used,level,cancelListening);
+  bool ok;
+  if(CachedCue* cue=cachedCue(client,kind)) ok=audio.play(cue->data,cue->bytes,level,cancelListening);
+  else {
+    ReplyBuffer reply(480000);
+    ok=client.cue(kind,reply)&&audio.play(reply.data,reply.used,level,cancelListening);
+  }
   Serial.printf("Cue %s: %s\n",kind,ok?"played":"failed");
   return ok;
 }
 
+
+const char* systemPrompt="You are Franky, a friendly English-speaking frog companion. Answer in one to three short sentences, at most 70 words. Use plain spoken text without markdown. Be accurate and admit uncertainty. Never claim to have changed device controls; the device handles those separately.";
+
+void addMessage(JsonArray messages,const char* role,const String& text) {
+  JsonObject item=messages.add<JsonObject>(); item["role"]=role; item["content"]=text;
+}
+// System prompt plus the previous turn, if any.
+void addContext(JsonArray messages,const History& history) {
+  addMessage(messages,"system",systemPrompt);
+  if(history.user.length()) {addMessage(messages,"user",history.user);addMessage(messages,"assistant",history.reply);}
+}
+
+void finishReply(const Job& job,bool ok) {
+  bool followUp=ok&&(job.kind==1||job.kind==3||job.kind==4);
+  notify(ok?Mood::Happy:Mood::Error,ok?"Ready for another question":"Speaker playback failed",true,false,0,0,false,false,followUp);
+}
+
+// Local speaker test: short, quiet sine. No network request or microphone.
+void speakerTest(const Job& job) {
+  ReplyBuffer tone(24000);
+  bool ok=false;
+  if(tone.data) {
+    for(int i=0;i<12000;i++) {
+      int16_t sample=int16_t(2500*sinf(2*PI*440*i/24000.0f));
+      tone.data[2*i]=sample&255; tone.data[2*i+1]=(sample>>8)&255;
+    }
+    ok=audio.play(tone.data,24000,job.volume,cancelListening);
+  }
+  notify(ok?Mood::Happy:Mood::Error,ok?"Speaker test complete":"Speaker unavailable",true);
+}
+
+// Hands-free: listen for "Hello Franky". Returns true when a question should follow.
+bool wakeStage(BridgeClient& client,const Job& job) {
+  ReplyBuffer snippet(16000*4*2);
+  size_t count=snippet.data?audio.utterance(reinterpret_cast<int16_t*>(snippet.data),16000*4,15000,job.threshold,cancelListening):0;
+  if(cancelListening.load() || count==0){notify(Mood::Idle,"Say Hello Franky",true);return false;}
+  JsonDocument detection;
+  bool heard=client.transcribe(reinterpret_cast<int16_t*>(snippet.data),count,detection,true);
+  if(!cancelListening.load() && heard && detection["pause"].is<bool>() && detection["pause"].as<bool>()) {
+    notify(Mood::Idle,"Listening paused - BOOT resumes",false,false,0,0,false,true);
+    playCue(client,"paused",job.volume);
+    notify(Mood::Idle,"Listening paused - BOOT resumes",true);return false;
+  }
+  if(cancelListening.load() || !heard || !detection["wake"].is<bool>() || !detection["wake"].as<bool>()) {
+    notify(heard?Mood::Idle:Mood::Error,heard?"Say Hello Franky":"Wake service unavailable",true);return false;
+  }
+  notify(Mood::Listening,"Hello! I'm listening",false,false,0,0,true);
+  if(!playCue(client,"listening",job.volume)){notify(Mood::Error,"Ready chime unavailable",true);return false;}
+  if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);return false;}
+  return true;
+}
+
+// Hands-free follow-up: chime, then listen for another question.
+bool followUpStage(BridgeClient& client,const Job& job) {
+  notify(Mood::Happy,"Ready for your next question");
+  if(!playCue(client,"followup",job.volume)){notify(Mood::Error,"Ready chime unavailable",true);return false;}
+  if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);return false;}
+  return true;
+}
+
+size_t questionSamples(const Job& job) { return 16000*((job.held||job.kind==3||job.kind==4)?10:6); }
+
+// Records one question. Returns the sample count, or 0 after reporting why.
+size_t recordQuestion(const Job& job,ReplyBuffer& recording) {
+  const bool automatic=job.kind==3||job.kind==4;
+  notify(Mood::Listening,automatic?"Listening - take your time":"Listening...");
+  size_t limit=questionSamples(job),count=0;
+  if(recording.data)count=automatic
+    ?audio.utterance(reinterpret_cast<int16_t*>(recording.data),limit,15000,job.threshold,cancelListening,1500)
+    :audio.record(reinterpret_cast<int16_t*>(recording.data),limit,job.held,cancelListening);
+  if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);return 0;}
+  if(count<3200) { notify(automatic?Mood::Idle:Mood::Error,automatic?"Say Hello Franky":"Hold BOOT a little longer",true); return 0; }
+  return count;
+}
+
+// Applies a volume/brightness command parsed by the bridge and sets the spoken
+// confirmation. Returns false after reporting an invalid command.
+bool applyControl(JsonVariant command,Job& job,String& answer) {
+  if(command["error"].is<const char*>()) {answer=command["error"].as<String>();return true;}
+  const char* target=command["target"] | ""; const char* mode=command["mode"] | "";
+  bool typed=command["value"].is<int>();
+  if(!typed || !Franky::control(target,mode,command["value"].as<int>(),job.volume,job.brightness)) {
+    notify(Mood::Error,"Invalid device command",true); return false;
+  }
+  notify(Mood::Happy,"Settings updated",false,true,job.volume,job.brightness);
+  answer=String(target)+" is now "+String(!strcmp(target,"volume")?job.volume:job.brightness)+" percent.";
+  return true;
+}
+bool hasDeviceControl(JsonVariant command) { return command["error"].is<const char*>() || command.is<JsonObject>(); }
+
+// Plays the bridge's streamed reply as it arrives and keeps the screen in step.
+struct StreamPlayer : Franky::FrameSink {
+  int volume; bool open=false, spoke=false;
+  JsonDocument meta,end;
+  explicit StreamPlayer(int level):volume(level) {}
+  bool onText(char type,const char* text,size_t length) override {
+    if(type=='E') {
+      if(deserializeJson(end,text,length) || !end.is<JsonObject>()) return false;
+      // Even a partially spoken reply is a failed turn when the bridge reports
+      // an error. Reject E so it cannot commit history or open a follow-up.
+      return end["error"].isUnbound();
+    }
+    if(type=='T') {spoke=true;notify(Mood::Speaking,String(text));return true;}
+    if(deserializeJson(meta,text,length)) return false;  // 'J': what the bridge heard.
+    if(meta["pause"]|false) notify(Mood::Idle,"Listening paused - BOOT resumes",false,false,0,0,false,true);
+    else if(meta["end_conversation"]|false) notify(Mood::Speaking,"You're welcome");
+    else if(!hasDeviceControl(meta["control"]) && String(meta["text"]|"").length()) notify(Mood::Thinking,"Thinking...");
+    return true;
+  }
+  bool onAudio(char,const uint8_t* pcm,size_t bytes) override {
+    if(!open && !(open=audio.beginPlayback())) return false;
+    return audio.writePlayback(pcm,bytes,volume,cancelListening);
+  }
+  // While the bridge is still working, keep the open speaker fed with silence
+  // (about 11 ms per call) so the I2S DMA never replays stale audio.
+  bool onWait() override {
+    static const uint8_t silence[512]={};
+    if(open) return audio.writePlayback(silence,sizeof(silence),volume,cancelListening);
+    delay(2);
+    return !cancelListening.load();
+  }
+  void close(bool finished) { if(open){audio.endPlayback(finished);open=false;} }
+};
+
+// Fast path: one streamed request per question (bridge 0.4 and later).
+Turn streamedTurn(BridgeClient& client,ReplyBuffer& recording,size_t count,Job& job,History& history,String& answer) {
+  JsonDocument context; addContext(context.to<JsonArray>(),history);
+  String messages; serializeJson(context,messages);
+  StreamPlayer player(job.volume);
+  ConverseResult result=client.converse(reinterpret_cast<int16_t*>(recording.data),count,messages,player);
+  player.close(result==ConverseResult::Done && !cancelListening.load());
+  if(result==ConverseResult::Unsupported) return Turn::Unsupported;
+  if(cancelListening.load()){notify(Mood::Idle,"Stopped",true);return Turn::Finished;}
+  if(result!=ConverseResult::Done || !player.meta["text"].is<String>()) {
+    notify(Mood::Error,player.spoke?"Reply was cut off":"Conversation service unavailable",true);return Turn::Finished;
+  }
+  if(player.meta["pause"]|false){notify(Mood::Idle,"Listening paused - BOOT resumes",true);return Turn::Finished;}
+  if(player.meta["end_conversation"]|false){history=History();notify(Mood::Idle,"Say Hello Franky",true);return Turn::Finished;}
+  String words=player.meta["text"].as<String>(); words.trim();
+  if(words.length()==0 || words.length()>2000){notify(Mood::Error,"I didn't catch that",true);return Turn::Finished;}
+  JsonVariant command=player.meta["control"];
+  if(hasDeviceControl(command)) return applyControl(command,job,answer)?Turn::Speak:Turn::Finished;
+  if(!player.spoke || !player.end["reply"].is<String>()) {
+    Serial.printf("Reply failed: %s\n",player.end["error"]|"no reply");
+    notify(Mood::Error,"Chat service unavailable",true);return Turn::Finished;
+  }
+  history.user=words; history.reply=player.end["reply"].as<String>();
+  finishReply(job,true);
+  return Turn::Finished;
+}
+
+// Compatible path for older bridges: transcribe, chat and speech as separate requests.
+Turn stepTurn(BridgeClient& client,ReplyBuffer& recording,size_t count,Job& job,History& history,String& answer,History& next) {
+  JsonDocument transcript;
+  if(!client.transcribe(reinterpret_cast<int16_t*>(recording.data),count,transcript)) {
+    notify(Mood::Error,"Speech service unavailable",true); return Turn::Finished;
+  }
+  if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);return Turn::Finished;}
+  if(transcript["pause"].is<bool>() && transcript["pause"].as<bool>()) {
+    notify(Mood::Idle,"Listening paused - BOOT resumes",false,false,0,0,false,true);
+    playCue(client,"paused",job.volume);
+    notify(Mood::Idle,"Listening paused - BOOT resumes",true);return Turn::Finished;
+  }
+  if(transcript["end_conversation"].is<bool>() && transcript["end_conversation"].as<bool>()) {
+    notify(Mood::Speaking,"You're welcome");
+    playCue(client,"welcome",job.volume);
+    history=History();
+    notify(Mood::Idle,"Say Hello Franky",true);return Turn::Finished;
+  }
+  if(!transcript["text"].is<String>()) { notify(Mood::Error,"Invalid transcription reply",true); return Turn::Finished; }
+  String words=transcript["text"].as<String>(); words.trim();
+  if(words.length()==0 || words.length()>2000) { notify(Mood::Error,"I didn't catch that",true); return Turn::Finished; }
+  JsonVariant command=transcript["control"];
+  if(hasDeviceControl(command)) return applyControl(command,job,answer)?Turn::Speak:Turn::Finished;
+  notify(Mood::Thinking,"Thinking...");
+  playCue(client,"thinking",job.volume);
+  if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);return Turn::Finished;}
+  JsonDocument request,response;
+  JsonArray messages=request["messages"].to<JsonArray>();
+  addContext(messages,history);
+  addMessage(messages,"user",words);
+  if(!client.json("/v1/chat/completions",request,response)) { notify(Mood::Error,"Chat service unavailable",true); return Turn::Finished; }
+  if(!response["choices"][0]["message"]["content"].is<String>()) { notify(Mood::Error,"Invalid chat reply",true); return Turn::Finished; }
+  answer=response["choices"][0]["message"]["content"].as<String>(); answer.trim();
+  if(answer.length()==0 || answer.length()>1800) { notify(Mood::Error,"Reply is empty or too long",true); return Turn::Finished; }
+  next.user=words; next.reply=answer;
+  return Turn::Speak;
+}
+
+// Speaks a complete answer through /v1/audio/speech (greeting, device
+// confirmations, and replies from older bridges).
+void speakAnswer(BridgeClient& client,const Job& job,const String& answer,History& history,const History& next) {
+  if(cancelListening.load()){notify(Mood::Idle,"Stopped",true);return;}
+  notify(Mood::Thinking,"Preparing my voice...");
+  ReplyBuffer pcm(2880000);
+  if(!client.speech(answer,pcm)) {notify(Mood::Error,"Voice service unavailable",true);return;}
+  if(cancelListening.load()){notify(Mood::Idle,"Stopped",true);return;}
+  notify(Mood::Speaking,answer);
+  bool ok=audio.play(pcm.data,pcm.used,job.volume,cancelListening);
+  if(cancelListening.load()){notify(Mood::Idle,"Stopped",true);return;}
+  if(ok && next.user.length()) history=next;
+  finishReply(job,ok);
+}
+
 void voiceTask(void*) {
   Job job;
-  String previousUser,previousReply;
+  History history;
+  // Cleared after an older bridge answers 404; a restart checks again.
+  bool streaming=true;
   while(true) {
     if(xQueueReceive(jobs,&job,portMAX_DELAY)!=pdTRUE) continue;
     BridgeClient client(job.url,cancelListening);
-    String answer,nextUser,nextReply;
-    bool ok=true;
-    if(job.kind==3) {
-      ReplyBuffer snippet(16000*4*2);
-      size_t count=snippet.data?audio.utterance(reinterpret_cast<int16_t*>(snippet.data),16000*4,15000,job.threshold,cancelListening):0;
-      if(cancelListening.load() || count==0){notify(Mood::Idle,"Say Hello Franky",true);continue;}
-      JsonDocument detection;
-      bool heard=client.transcribe(reinterpret_cast<int16_t*>(snippet.data),count,detection,true);
-      if(!cancelListening.load() && heard && detection["pause"].is<bool>() && detection["pause"].as<bool>()) {
-        notify(Mood::Idle,"Listening paused - BOOT resumes",false,false,0,0,false,true);
-        playCue(client,"paused",job.volume);
-        notify(Mood::Idle,"Listening paused - BOOT resumes",true);continue;
-      }
-      if(cancelListening.load() || !heard || !detection["wake"].is<bool>() || !detection["wake"].as<bool>()) {
-        notify(heard?Mood::Idle:Mood::Error,heard?"Say Hello Franky":"Wake service unavailable",true);continue;
-      }
-      notify(Mood::Listening,"Hello! I'm listening",false,false,0,0,true);
-      if(!playCue(client,"listening",job.volume)){notify(Mood::Error,"Ready chime unavailable",true);continue;}
-      if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);continue;}
-    }
-    if(job.kind==4) {
-      notify(Mood::Happy,"Ready for your next question");
-      if(!playCue(client,"followup",job.volume)){notify(Mood::Error,"Ready chime unavailable",true);continue;}
-      if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);continue;}
-    }
-    if(job.kind==2) {
-      // Local speaker test: short, quiet sine. No network request or microphone.
-      ReplyBuffer tone(24000);
-      if(tone.data) {
-        for(int i=0;i<12000;i++) {
-          int16_t sample=int16_t(2500*sinf(2*PI*440*i/24000.0f));
-          tone.data[2*i]=sample&255; tone.data[2*i+1]=(sample>>8)&255;
-        }
-        ok=audio.play(tone.data,24000,job.volume,cancelListening);
-      } else ok=false;
-      notify(ok?Mood::Happy:Mood::Error,ok?"Speaker test complete":"Speaker unavailable",true); continue;
-    }
+    if(job.kind==2) {speakerTest(job);continue;}
+    if(job.kind==3 && !wakeStage(client,job)) continue;
+    if(job.kind==4 && !followUpStage(client,job)) continue;
+    String answer; History next;
     if(job.kind==0) {
       answer="Hello! I'm Franky, your little frog companion. I'm ready when you need me.";
-      // Warm the bridge's selected-voice cache before the first conversation.
-      ReplyBuffer cue(480000);client.cue("thinking",cue);
-    }
-    else {
-      const bool automatic=job.kind==3||job.kind==4;
-      notify(Mood::Listening,automatic?"Listening - take your time":"Listening...");
-      size_t limit=16000*((job.held||automatic)?10:6);
-      ReplyBuffer recording(limit*2);
-      size_t count=0;
-      if(recording.data)count=automatic
-        ?audio.utterance(reinterpret_cast<int16_t*>(recording.data),limit,15000,job.threshold,cancelListening,1500)
-        :audio.record(reinterpret_cast<int16_t*>(recording.data),limit,job.held,cancelListening);
-      if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);continue;}
-      if(count<3200) { notify(automatic?Mood::Idle:Mood::Error,automatic?"Say Hello Franky":"Hold BOOT a little longer",true); continue; }
+      // Fetch the chimes now so the first conversation does not wait for them.
+      for(const char* kind:{"listening","thinking","followup"}) cachedCue(client,kind);
+    } else {
+      ReplyBuffer recording(questionSamples(job)*2);
+      size_t count=recordQuestion(job,recording);
+      if(!count) continue;
       notify(Mood::Thinking,"Hearing your words...");
-      JsonDocument transcript;
-      if(!client.transcribe(reinterpret_cast<int16_t*>(recording.data),count,transcript)) {
-        notify(Mood::Error,"Speech service unavailable",true); continue;
-      }
-      if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);continue;}
-      if(transcript["pause"].is<bool>() && transcript["pause"].as<bool>()) {
-        notify(Mood::Idle,"Listening paused - BOOT resumes",false,false,0,0,false,true);
-        playCue(client,"paused",job.volume);
-        notify(Mood::Idle,"Listening paused - BOOT resumes",true);continue;
-      }
-      if(transcript["end_conversation"].is<bool>() && transcript["end_conversation"].as<bool>()) {
-        notify(Mood::Speaking,"You're welcome");
-        playCue(client,"welcome",job.volume);
-        previousUser="";previousReply="";
-        notify(Mood::Idle,"Say Hello Franky",true);continue;
-      }
-      if(!transcript["text"].is<String>()) { notify(Mood::Error,"Invalid transcription reply",true); continue; }
-      String words=transcript["text"].as<String>(); words.trim();
-      if(words.length()==0 || words.length()>2000) { notify(Mood::Error,"I didn't catch that",true); continue; }
-      JsonVariant command=transcript["control"];
-      if(command["error"].is<const char*>()) answer=command["error"].as<String>();
-      else if(command.is<JsonObject>()) {
-        const char* target=command["target"] | ""; const char* mode=command["mode"] | "";
-        bool typed=command["value"].is<int>();
-        if(!typed || !Franky::control(target,mode,command["value"].as<int>(),job.volume,job.brightness)) {
-          notify(Mood::Error,"Invalid device command",true); continue;
-        }
-        notify(Mood::Happy,"Settings updated",false,true,job.volume,job.brightness);
-        answer=String(target)+" is now "+String(!strcmp(target,"volume")?job.volume:job.brightness)+" percent.";
-      } else {
-        notify(Mood::Thinking,"Thinking...");
-        playCue(client,"thinking",job.volume);
-        if(cancelListening.load()){notify(Mood::Idle,"Listening cancelled",true);continue;}
-        JsonDocument request,response;
-        JsonArray messages=request["messages"].to<JsonArray>();
-        auto add=[&](const char* role,const String& text) { JsonObject item=messages.add<JsonObject>();item["role"]=role;item["content"]=text; };
-        add("system","You are Franky, a friendly English-speaking frog companion. Answer in one to three short sentences, at most 70 words. Use plain spoken text without markdown. Be accurate and admit uncertainty. Never claim to have changed device controls; the device handles those separately.");
-        if(previousUser.length()) {add("user",previousUser);add("assistant",previousReply);}
-        add("user",words);
-        if(!client.json("/v1/chat/completions",request,response)) { notify(Mood::Error,"Chat service unavailable",true); continue; }
-        if(!response["choices"][0]["message"]["content"].is<String>()) { notify(Mood::Error,"Invalid chat reply",true); continue; }
-        answer=response["choices"][0]["message"]["content"].as<String>(); answer.trim();
-        if(answer.length()==0 || answer.length()>1800) { notify(Mood::Error,"Reply is empty or too long",true); continue; }
-        nextUser=words; nextReply=answer;
-      }
+      Turn turn=streaming?streamedTurn(client,recording,count,job,history,answer):Turn::Unsupported;
+      if(turn==Turn::Unsupported) {streaming=false;turn=stepTurn(client,recording,count,job,history,answer,next);}
+      if(turn==Turn::Finished) continue;
     }
-    if(cancelListening.load()){notify(Mood::Idle,"Stopped",true);continue;}
-    notify(Mood::Thinking,"Preparing my voice...");
-    ReplyBuffer pcm(2880000);
-    if(!client.speech(answer,pcm)) {notify(Mood::Error,"Voice service unavailable",true);continue;}
-    if(cancelListening.load()){notify(Mood::Idle,"Stopped",true);continue;}
-    notify(Mood::Speaking,answer);
-    ok=audio.play(pcm.data,pcm.used,job.volume,cancelListening);
-    if(cancelListening.load()){notify(Mood::Idle,"Stopped",true);continue;}
-    if(ok && nextUser.length()){previousUser=nextUser;previousReply=nextReply;}
-    notify(ok?Mood::Happy:Mood::Error,ok?"Ready for another question":"Speaker playback failed",true,false,0,0,false,false,ok&&(job.kind==1||job.kind==3||job.kind==4));
+    speakAnswer(client,job,answer,history,next);
   }
 }
 
@@ -212,7 +357,7 @@ void routes() {
   const char* headers[]={"X-Franky-Token"};web.collectHeaders(headers,1);
   web.on("/",HTTP_GET,[]{web.sendHeader("Cache-Control","no-store");web.send_P(200,"text/html",setupPage);});
   web.on("/status",HTTP_GET,[]{
-    JsonDocument d;d["version"]="0.3.3-dev";d["state"]=state;d["busy"]=interaction.busy;d["audio"]=audioReady;d["connected"]=WiFi.status()==WL_CONNECTED;
+    JsonDocument d;d["version"]="0.4.0-dev";d["state"]=state;d["busy"]=interaction.busy;d["audio"]=audioReady;d["connected"]=WiFi.status()==WL_CONNECTED;
     d["ssid"]=ssid;d["bridge"]=bridge;d["volume"]=volume;d["brightness"]=brightness;d["token"]=csrf;d["text"]=lastText;
     d["hands_free"]=handsFree;d["paused"]=paused;d["wake_monitoring"]=interaction.wakeMonitoring;d["wake_threshold"]=wakeThreshold;d["stopping"]=interaction.stopping;d["follow_up_pending"]=interaction.followUpReady;
     d["pending_manual"]=interaction.pending!=Franky::Pending::None;
@@ -269,13 +414,13 @@ void routes() {
     if(interaction.wakeMonitoring)cancelWork(Franky::Pending::SoundTest);else startJob(2);
     JsonDocument d;d["ok"]=interaction.busy;jsonReply(interaction.busy?202:503,d);
   });
-  web.on("/about",HTTP_GET,[]{web.send(200,"text/plain","Franky firmware 0.3.3-dev\nCopyright 2026 DigitalRCS. Original application and artwork: MIT.\nCodec drivers: Espressif, Apache-2.0. Display: Adafruit BSD. Arduino core and other dependencies retain their licenses.\nNo warranty. Source and full notices: https://github.com/digitalrcs/DigitalRCS-Local-LLM-Chatbot\n");});
+  web.on("/about",HTTP_GET,[]{web.send(200,"text/plain","Franky firmware 0.4.0-dev\nCopyright 2026 DigitalRCS. Original application and artwork: MIT.\nCodec drivers: Espressif, Apache-2.0. Display: Adafruit BSD. Arduino core and other dependencies retain their licenses.\nNo warranty. Source and full notices: https://github.com/digitalrcs/DigitalRCS-Local-LLM-Chatbot\n");});
   web.onNotFound([]{if(ap){web.sendHeader("Location","http://192.168.4.1");web.send(302,"text/plain","");}else errorReply(404,"Not found");});
   web.begin();
 }
 
 void setup() {
-  Serial.begin(115200);delay(300);Serial.println("DigitalRCS Franky independent firmware 0.3.3-dev");
+  Serial.begin(115200);delay(300);Serial.println("DigitalRCS Franky independent firmware 0.4.0-dev");
   pinMode(Board::talk,INPUT_PULLUP);pinMode(Board::pageUp,INPUT_PULLUP);pinMode(Board::pageDown,INPUT_PULLUP);
   prefs.begin("franky2",false);
   ssid=prefs.getString("ssid","");password=prefs.getString("pass","");bridge=prefs.getString("bridge","");
@@ -354,7 +499,7 @@ void loop() {
   if(handsFree&&!paused&&!interaction.busy&&!ap&&connected&&greeted&&int32_t(millis()-nextListenAt)>=0){
     uint8_t kind=interaction.followUpReady?4:3;interaction.followUpReady=false;startJob(kind);
   }
-  face.draw(mood,state,statusDetail);
+  face.draw(mood,state,statusDetail,audio.mouth.load());
   if(restartAt&&int32_t(millis()-restartAt)>=0)ESP.restart();
   delay(5);
 }

@@ -13,7 +13,7 @@ $env:PYTHONPATH = "bridge"
 
 Unit tests use mocks and do not download speech models or require a robot. Integration checks require model downloads and a running LM Studio instance. Never describe mocked tests as hardware validation.
 
-Run `node --test tests/ui_pages_test.cjs` with Node 22+ for settings synchronization, recovery, Stop, and readiness-page regressions. With a C++17 compiler (`g++`) on PATH, compile/run `tests/control_logic_test.cpp` and `tests/interaction_test.cpp`, then run `tests/audio_capture_test.py`, `tests/audio_playback_test.py`, and `tests/network_cancel_test.py` with Python. These use deterministic fake hardware; a firmware build and robot checks are still needed.
+Run `node --test tests/ui_pages_test.cjs` with Node 22+ for settings synchronization, recovery, Stop, and readiness-page regressions. With a C++17 compiler (`g++`) on PATH, compile/run `tests/control_logic_test.cpp` and `tests/interaction_test.cpp`, then run `tests/audio_capture_test.py`, `tests/audio_playback_test.py`, `tests/network_cancel_test.py`, and `tests/frame_reader_test.py` with Python. These use deterministic fake hardware; a firmware build and robot checks are still needed.
 
 ## Releases
 
