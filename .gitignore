@@ -12,5 +12,8 @@ __pycache__/
 /.arduino-user/
 /build-firmware/
 /private-backups/
+/.runtime/
+/logs/
+/FrankySetup.exe
 
 /bridge/.secrets/

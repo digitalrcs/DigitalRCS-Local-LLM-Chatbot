@@ -2,7 +2,7 @@
 
 **Meet Franky: an English-speaking chatbot companion powered by a local AI model.**
 
-[Installation guide](docs/INSTALL.md) · [Voice software and downloads](docs/VOICE-SETUP.md) · [Move to a Windows AI server](docs/WINDOWS-SERVER.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [How it works](docs/ARCHITECTURE.md) · [Credits](THIRD_PARTY_NOTICES.md)
+[Windows setup app](docs/WINDOWS-INSTALLER.md) · [Manual installation](docs/INSTALL.md) · [Voice software and downloads](docs/VOICE-SETUP.md) · [Move to a Windows AI server](docs/WINDOWS-SERVER.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [How it works](docs/ARCHITECTURE.md) · [Credits](THIRD_PARTY_NOTICES.md)
 
 > **Development preview.** Includes the PC bridge and newly written Franky firmware source for the LAFVIN LA064. The firmware has its own application code and frog artwork, with licensed Espressif codec drivers. Read the [firmware guide](docs/FIRMWARE.md) before building or flashing; the release does not bundle inherited XiaoKe firmware.
 
@@ -17,21 +17,24 @@ Franky's PC bridge brings together English speech recognition, an LM Studio chat
 | English speech recognition | Local faster-whisper, base.en |
 | AI replies | Your selected LM Studio chat model |
 | Natural male voices | 11 choices with previews; Liam is the default |
-| Easy Windows launch | Double-click setup, start, and connection check |
+| Windows setup app | One installer with its own runtime, speech files, provider choices, and shortcuts |
 | Volume and brightness commands | Spoken commands, web sliders, persistent levels in new firmware |
 | Stop and service readiness | BOOT/web Stop, background speech loading, clear bridge readiness checks |
 | Hands-free option | Say Hello Franky, pause by voice, resume with BOOT; experimental |
-| Robot firmware | Newly written source, animated frog face, build/flash tools |
+| Robot firmware | Newly written source, animated frog face, optional guided USB upload for the LA064 |
 | Optional online providers | OpenAI API, OpenRouter free models, Gemini; bring your own key |
 
 ## Start here
 
-1. Read [what you need](docs/INSTALL.md#1-get-ready).
-2. Download the Windows ZIP from [Releases](https://github.com/digitalrcs/DigitalRCS-Local-LLM-Chatbot/releases), then **Extract All**.
-3. Install Python 3.13 (64-bit) and the [X64 C++ runtime for speech](docs/VOICE-SETUP.md#1-install-the-windows-prerequisites), prepare LM Studio, and double-click **START-HERE.cmd**. Wait for the voice libraries and model downloads to finish.
-4. Double-click **START-FRANKY.cmd** and open **http://localhost:8766** to check readiness and try the voices. Speech models prepare in the background; the page explains any setup problems.
+1. Download **Setup.exe** from a release that provides the Windows installer. Run it on a Windows 10/11 x64 PC.
+2. Follow **Franky Setup** to choose LM Studio or an online provider, check the voice, and connect your robot. Python and speech files are included; no terminal is needed.
+3. Use **Start Franky** for everyday use. Keep the PC awake and your chosen answer service available.
 
-The [step-by-step guide](docs/INSTALL.md) explains every stage, including what success looks like. You do not need to edit code.
+The [Windows setup guide](docs/WINDOWS-INSTALLER.md) explains each choice. LM Studio and chat-model downloads depend on your connection and hardware. Windows may ask an administrator to approve runtime support or home-network access.
+
+The **Windows ZIP** is still available for manual installation and development: extract it, install Python 3.13 and the [C++ speech runtime](docs/VOICE-SETUP.md), then run **START-HERE.cmd**. Follow [manual installation](docs/INSTALL.md) for that route.
+
+You do not need to edit code for either route.
 
 To run everything on your Windows AI server, follow [Move the bridge and website](docs/WINDOWS-SERVER.md). The website is included in the bridge, and **SET-BRIDGE-ADDRESS.cmd** records the LAN address shown in its connection settings. Franky's device settings page remains on the ESP32.
 
@@ -56,7 +59,7 @@ The robot records and plays audio; the computer does the heavy work. The prototy
 
 ## Privacy and requirements
 
-Initial installation downloads software and models from the Internet. In the default LM Studio mode, speech and chat processing can then run on your PC and home network. Optional online providers receive conversation text; see [provider choices, free tiers, and key setup](docs/PROVIDERS.md). The bridge does not intentionally save recordings or transcripts; LM Studio's own logging settings are separate. Keep the computers awake and the bridge window open.
+Initial setup needs Internet access for the installer and your chosen chat service/model. The all-in-one installer includes the speech files. In default LM Studio mode, speech and chat processing can then run on your PC and home network. Optional online providers receive conversation text; see [provider choices, free tiers, and key setup](docs/PROVIDERS.md). The bridge does not intentionally save recordings or transcripts; LM Studio's own logging settings are separate. Keep the computer awake and the bridge running.
 
 This preview is intended for **trusted home networks**. Its HTTP endpoints have no login and must not be forwarded to the Internet. See [security information](SECURITY.md).
 

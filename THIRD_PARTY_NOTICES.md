@@ -6,7 +6,19 @@ The development robot uses an English/local adaptation of [Wu Yu-chu's (achir101
 
 LAFVIN manufactures the LA064 kit. [Official hardware documentation](https://lafvin-ai-chatbot.readthedocs.io/en/latest/Tutorial/2.hardware_connect.html) is provided by LAFVIN. DigitalRCS is an independent community project and is not endorsed by LAFVIN, LM Studio, or the upstream firmware author.
 
-## Separately downloaded software and models
+## Windows installer components
+
+The optional Windows Setup.exe bundles third-party runtime and speech components to simplify installation. Their original license files remain in the installed runtime's package directories and `third-party` folder, alongside asset provenance and firmware source/relink materials. The project's MIT license does not replace those terms.
+
+- A private CPython 3.13.18 runtime from [Astral's python-build-standalone](https://github.com/astral-sh/python-build-standalone), with its Python and bundled-component notices retained.
+- The packages pinned in `bridge/requirements-lock.txt`, installed freshly for Windows x64 at build time; package metadata and included license files are retained. eSpeak NG's speech library and data are used through espeakng-loader and keep their upstream terms.
+- The English Systran faster-whisper `base.en` and `tiny.en` conversions, with MIT notices and pinned revision/hash records; Kokoro-82M ONNX weights and voice files, with model-card/Apache-2.0 notices and kokoro-onnx MIT attribution.
+- Espressif esptool 5.2.0 for optional USB flashing, with its GPL license and matching upstream source archive. The firmware carries its separate dependency/source/relink materials.
+- Microsoft's signed Visual C++ Redistributable under Microsoft's redistribution terms. Only that prerequisite and the explicitly requested firewall operation need administrator access.
+
+LM Studio and its chat models are not bundled. Its optional install/download flow uses the vendor's separately distributed application and terms.
+
+## Source ZIP and separately downloaded components
 
 The MIT license in this repository covers only its original included code and documentation. Dependencies and downloaded models retain their own terms; the release ZIP does not bundle their source, packages, model weights, or licenses as if they were DigitalRCS-owned.
 

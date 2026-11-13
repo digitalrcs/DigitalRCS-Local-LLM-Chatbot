@@ -3,6 +3,26 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
+  installer-ui:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and test the native setup wizard
+        shell: pwsh
+        run: |
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          $output = Join-Path $env:RUNNER_TEMP 'franky-installer-ui'
+          New-Item -ItemType Directory -Force -Path $output | Out-Null
+          $wizard = Join-Path $output 'FrankySetup.exe'
+          $tests = Join-Path $output 'installer-ui-test.exe'
+          $wizardSource = Join-Path $env:GITHUB_WORKSPACE 'installer\FrankySetup.cs'
+          $testSource = Join-Path $env:GITHUB_WORKSPACE 'tests\installer_ui_test.cs'
+          & $csc /nologo /target:winexe /platform:x64 /optimize+ "/out:$wizard" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Web.Extensions.dll $wizardSource
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $csc /nologo /target:exe /platform:x64 "/out:$tests" /reference:System.Windows.Forms.dll $testSource
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $tests $wizard
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   unit:
     runs-on: windows-latest
     strategy:

@@ -1,5 +1,7 @@
 # Set up DigitalRCS Local LLM Chatbot
 
+**For the easiest Windows setup, use the [all-in-one Setup.exe guide](WINDOWS-INSTALLER.md).** It includes the runtime and speech files. The instructions below cover the source ZIP and manual installation.
+
 This guide is for someone who has never installed a programming project. Follow the steps in order. You can stop after trying the voices on your computer.
 
 **Start with the PC bridge and voice picker using this guide.** To replace the software inside a LAFVIN LA064 kit, follow the separate [firmware build and setup guide](FIRMWARE.md). New firmware source is included; it is a development preview and is separate from the earlier XiaoKe adaptation.
