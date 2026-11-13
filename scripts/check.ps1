@@ -2,6 +2,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $root
 $python = Join-Path $root '.venv/Scripts/python.exe'
+if (Test-Path (Join-Path $root '.runtime/python.exe')) { $python = Join-Path $root '.runtime/python.exe' }
 if (-not (Test-Path -LiteralPath $python)) { throw 'Run START-HERE.cmd first.' }
 try {
     $health = Invoke-RestMethod 'http://127.0.0.1:8766/health' -TimeoutSec 3

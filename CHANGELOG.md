@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0-preview.1
+
+- Added an easy seven-step setup guide, a download chooser, a plain-language glossary, installer-first troubleshooting and AI-server instructions. Manual setup and developer build guides remain available separately.
+- Added a per-user Windows Setup.exe and native guided setup/control panel. The installer bundles an isolated Python runtime, speech dependencies, Kokoro voices, and both English hearing models; no system Python or package commands are needed.
+- Guided LM Studio installation/connection, existing LAN server selection, and explicitly chosen online providers with masked, Windows-protected keys. Existing provider, voice, and output-budget settings are retained.
+- Added voice preview, home-network address selection, a scoped firewall action, readiness checks, and start/stop shortcuts.
+- Optional USB setup bundles the tested 0.4.0 LA064 firmware and verifies the selected chip, flash capacity, image hashes, and settings backup before writing separate images. No Arduino compiler or erase-all operation is involved.
+- Bundled recognition models load directly from disk without Hub metadata requests. The source ZIP and manual setup remain supported.
+- Added installer asset provenance, component notices/source materials, repeatable build instructions, and setup/flash regression checks. The installer is an unsigned development preview; clean-PC and physical audio validation remain distinct from automated checks.
+
 ## 0.4.0-preview.1
 
 Faster, smoother conversations and a talking mouth. Update and restart the bridge, then build and flash the firmware. Older firmware keeps working with the new bridge, and the new firmware falls back to the old requests with an older bridge.

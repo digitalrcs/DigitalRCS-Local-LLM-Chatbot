@@ -1,13 +1,28 @@
 # Windows voice software and downloads
 
-Complete these steps on **the computer running Franky's bridge**, including when moving it to an AI server. Having LM Studio installed does not finish the speech setup. Franky needs software to recognize your question and separate software to speak the answer.
+Franky needs speech recognition to hear your question and a voice engine to speak the answer. Both run on **the PC running Franky's bridge**. LM Studio supplies the answer text and is a separate setup choice.
+
+## If you used the Windows installer
+
+The [Windows Setup.exe installer](WINDOWS-INSTALLER.md) includes its own Python runtime, speech packages, Kokoro voices, and English recognition models. You can check them without opening a terminal:
+
+1. Open **Franky Setup → Voice** and choose **Prepare Franky's voice**. This checks the speech components and can download missing model files.
+2. Choose **Play voice preview**. Listen through this PC's speakers; this does not test the robot's speaker.
+3. Open **Try it**, choose **Start bridge**, then **Check readiness**.
+4. Choose **Open voice page** to try another voice. On that page, **Listen to preview** plays a sample and **Use this voice** saves your choice.
+
+Then ask a short question on Franky to test his microphone and speaker. Keep the bridge PC awake. If a check fails, retry **Prepare Franky's voice** and read its error message. For missing application files or packages, stop the bridge and rerun the Windows installer. See [troubleshooting](TROUBLESHOOTING.md) for the next step.
+
+## Manual source installation
+
+The remaining setup and command-line repair instructions are for the **source ZIP/manual installation**, including moving that installation to an AI server. Setup.exe users do not need to install a separate Python environment or run START-HERE.
 
 ## 1. Install the Windows prerequisites
 
 1. Install **64-bit Python 3.13** using the [Windows installer from python.org](https://www.python.org/downloads/windows/). Include the Python launcher. The setup also supports Python 3.11 and 3.12.
 2. Install the latest **Microsoft Visual C++ v14 Redistributable, X64** from [Microsoft's official download page](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist). The page's X64 download is **vc_redist.x64.exe**; [direct Microsoft download](https://aka.ms/vc14/vc_redist.x64.exe). Open the installer and choose **Install**, or **Repair** if offered. Restart Windows if requested, then reopen the setup window.
 
-The C++ runtime supports the native speech libraries; [ONNX Runtime documents this Windows requirement](https://onnxruntime.ai/docs/install/#requirements). Franky's setup installs Python packages but **does not install or repair this Windows runtime**. Installing it on your old PC does not install it on the AI server. You do not need the full Visual Studio development program.
+The C++ runtime supports the native speech libraries; [ONNX Runtime documents this Windows requirement](https://onnxruntime.ai/docs/install/#requirements). The manual **START-HERE.cmd** setup installs Python packages but **does not install or repair this Windows runtime**. The Windows Setup.exe installer includes a runtime installer and runs it when needed. Installing it on your old PC does not install it on the AI server. You do not need the full Visual Studio development program.
 
 ## 2. Let START-HERE install the speech components
 
@@ -58,6 +73,8 @@ The [Hugging Face CLI](https://huggingface.co/docs/huggingface_hub/en/guides/cli
 **Setup complete** confirms that the setup script finished; it does not prove that Kokoro can synthesize speech. The preview is the actual voice test. A preview plays through the browser's computer or phone; Franky's replies play through the robot. A server without speakers can still serve Franky's audio, and you can preview from another computer.
 
 ## If a speech component is missing
+
+**Windows installer users:** begin with **Franky Setup → Voice → Prepare Franky's voice**, or rerun Setup.exe to restore application packages. The `.venv` commands below apply to the manual source installation.
 
 Stop the bridge with **Ctrl+C** before repairing its installation. Use PowerShell in the extracted project folder; the commands below use that folder's Python environment.
 

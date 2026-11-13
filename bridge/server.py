@@ -63,6 +63,11 @@ def timed(stage):
 def load_whisper(name):
     from faster_whisper import WhisperModel
     compute = "float16" if STT_DEVICE == "cuda" else "int8"
+    bundled = ROOT / "models" / ("whisper-" + name) if name in {"base.en", "tiny.en"} else None
+    if bundled is not None and (bundled / "model.bin").is_file():
+        # The Windows installer supplies complete local models. Loading these
+        # paths needs neither Hub authentication nor a metadata network call.
+        return WhisperModel(str(bundled), device=STT_DEVICE, compute_type=compute, local_files_only=True)
     return WhisperModel(name, device=STT_DEVICE, compute_type=compute, download_root=str(ROOT / "models"))
 
 
@@ -154,7 +159,8 @@ def ready():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "provider": _settings["provider"], "provider_url": LM_URL, "model": LM_MODEL,
+    return {"status": "ok", "instance_id": os.environ.get("FRANKY_INSTANCE_ID", ""),
+            "provider": _settings["provider"], "provider_url": LM_URL, "model": LM_MODEL,
             "public_bridge_url": _settings.get("public_bridge_url", ""), "lm_studio_url": _settings.get("lm_studio_url", ""),
             "speech_model": STT_MODEL, "speech_loaded": _whisper is not None,
             "wake_speech_model": WAKE_STT_MODEL, "speech_device": STT_DEVICE,

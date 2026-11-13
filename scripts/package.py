@@ -4,7 +4,7 @@ from pathlib import Path
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.4.0-preview.1"
+VERSION = "0.5.0-preview.1"
 FILES = [
     "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "SECURITY.md", "CONTRIBUTING.md", "CHANGELOG.md",
     "START-HERE.cmd", "START-FRANKY.cmd", "CHECK-SETUP.cmd",
@@ -25,6 +25,10 @@ FILES = [
     "CHANGE-PROVIDER.cmd", "BUILD-FRANKY.cmd", "FLASH-FRANKY.cmd",
     "scripts/provider.ps1", "scripts/build-firmware.ps1", "scripts/flash-firmware.ps1", "scripts/flash-wizard.ps1",
     "scripts/generate_frog.py", "scripts/embed_setup.py", "docs/PROVIDERS.md", "docs/FIRMWARE.md",
+    "installer/FrankySetup.cs", "installer/FrankySetup.iss", "installer/worker.py", "installer/bridge_runner.py",
+    "installer/flash_robot.py", "scripts/build-installer.ps1", "scripts/prepare-installer-assets.py", "scripts/package-sources.py",
+    "tests/test_installer_worker.py", "tests/test_installer_flash.py", "tests/test_installer_assets.py",
+    "tests/installer_ui_test.cs", "docs/WINDOWS-INSTALLER.md", "docs/README.md", "docs/BUILD-INSTALLER.md",
 ]
 
 # Only the public firmware source/artwork directories; never build outputs or flash backups.

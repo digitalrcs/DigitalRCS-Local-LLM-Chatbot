@@ -1,8 +1,10 @@
-# Set up DigitalRCS Local LLM Chatbot
+# Manual setup from the Windows ZIP
 
-This guide is for someone who has never installed a programming project. Follow the steps in order. You can stop after trying the voices on your computer.
+**For the easiest Windows setup, use the [all-in-one Setup.exe guide](WINDOWS-INSTALLER.md).** It includes the runtime and speech files. The instructions below cover the source ZIP and manual installation.
 
-**Start with the PC bridge and voice picker using this guide.** To replace the software inside a LAFVIN LA064 kit, follow the separate [firmware build and setup guide](FIRMWARE.md). New firmware source is included; it is a development preview and is separate from the earlier XiaoKe adaptation.
+Use this page if you chose the source ZIP instead of Setup.exe. It takes more steps because you install Python and the speech tools yourself. If you already used Setup.exe, continue with [the seven setup pages](WINDOWS-INSTALLER.md) instead.
+
+**Start with the PC bridge and voice picker using this guide.** For robot software, Setup.exe offers guided USB flashing; the source ZIP uses the separate [firmware build guide](FIRMWARE.md). Both use Franky's newly written firmware, separate from the earlier XiaoKe adaptation.
 
 ## 1. Get ready
 
