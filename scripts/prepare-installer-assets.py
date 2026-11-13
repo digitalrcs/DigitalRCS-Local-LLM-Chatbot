@@ -22,7 +22,9 @@ CURATED_SOURCE_ARCHIVES = {
     "PyAV-18.1.0-build-source.zip",
     "pyav-ffmpeg-8.1.2-1-build-source.zip",
     "pyav-ffmpeg-8.1.2-1-dependency-sources.zip",
+    "pyav-msys2-runtime-sources.zip",
     "Franky-0.4.0-firmware-relink-sources.zip",
+    "Franky-0.4.0-sdk-notices.zip",
 }
 
 

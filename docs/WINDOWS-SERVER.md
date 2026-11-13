@@ -1,102 +1,96 @@
-# Move Franky's bridge and website to a Windows AI server
+# Run Franky on your Windows AI server
 
-Run the voice bridge and LM Studio together on your Windows AI server. The voice picker, readiness dashboard, and connection information are part of the bridge: starting one program serves the website too. No IIS installation or separate website deployment is needed.
+You can run Franky's PC helper and website on the same Windows computer as LM Studio. That computer is the **AI server**. Your normal PC can then be switched off while Franky uses the server.
 
-This worked example uses **192.168.5.250** as the AI server's home-network address. Replace it if your server uses a different address. These are installation instructions; they do not mean the software has already been deployed or tested on your server.
+The website comes with the bridge. You do not need IIS or a separate website installer.
 
-| Setting | Value for this server | Where it belongs |
-| --- | --- | --- |
-| LM Studio address | `http://127.0.0.1:1234/v1` | Provider setup **on the AI server** |
-| Advertised bridge address | `http://192.168.5.250:8766` | **SET-BRIDGE-ADDRESS.cmd**, then displayed in the dashboard |
-| Website from your PC/phone | `http://192.168.5.250:8766` | Browser address bar |
-| Website on the AI server itself | `http://localhost:8766` | Browser on the server |
-| Voice bridge / AI server address | `http://192.168.5.250:8766` | Franky's existing device setup page |
+This example uses **192.168.5.250** for the AI server. Use your server's own home-network address if it is different. These are instructions, not a claim that your server has already been updated.
 
-`127.0.0.1` means the computer running that program. Never enter it as the robot's bridge address. Port **1234** is LM Studio; port **8766** is Franky's bridge and website. Franky's Wi-Fi, volume, brightness, Talk, Stop, and listening settings page continues to run **on the ESP32 at the address shown on its screen**.
+## 1. Install Franky on the server
 
-## 1. Copy the release to the AI server
+1. On the AI server, download **[Franky Setup.exe](https://github.com/digitalrcs/DigitalRCS-Local-LLM-Chatbot/releases/download/v0.5.0-preview.1/DigitalRCS-Franky-0.5.0-preview.1-Setup.exe)**.
+2. Open it and keep the suggested folder. It includes Python and the speech files. If Windows asks for an administrator's password to install Microsoft runtime support, ask the person who manages the server.
+3. Open **Franky Setup** when installation finishes. The [easy setup guide](WINDOWS-INSTALLER.md) explains all seven pages.
 
-1. Download the **Windows ZIP** from the [GitHub releases](https://github.com/digitalrcs/DigitalRCS-Local-LLM-Chatbot/releases). Use version **0.3.3-preview.1 or newer** for these instructions.
-2. Copy the ZIP to the AI server, then use **Extract All**. Put the extracted program in a permanent writable folder, for example `C:\Apps\Franky`. That folder should contain `START-HERE.cmd`, `START-FRANKY.cmd`, and `SET-BRIDGE-ADDRESS.cmd` directly.
-3. Install **64-bit Python 3.13**, including the Python launcher, if it is not already present. The bridge's primary Windows setup target is Python 3.13 on x64.
-4. Install or repair the **Microsoft Visual C++ v14 Redistributable, X64, on the AI server**. Follow [Windows voice software and downloads](VOICE-SETUP.md) for Microsoft's installer and the speech prerequisites. An installation on the old PC does not carry over to this server.
+If you are updating an existing installation, first use **Stop bridge** and close its setup window. For an old command-window installation, press **Ctrl+C** in its running window. Keep the old folder until the new installation works.
 
-Do not transfer the old `.venv` folder: setup creates a new environment for the server. The source release excludes your local settings, credentials, downloaded models, logs, and firmware binaries.
+## 2. Connect to LM Studio
 
-Optional: copy only `bridge/voice_settings.json` to preserve the chosen voice. You can also copy the old `bridge/models` directory to the same location before setup to reuse downloaded speech files; otherwise setup downloads them. LM Studio's own chat models are managed separately by LM Studio and can stay where they already are on the AI server.
+1. Open LM Studio on the AI server. Download or load the chat model you want to use.
+2. Ask it a short question inside LM Studio to check that it can answer.
+3. Start LM Studio's server in its **Developer** tab. See the [official server guide](https://lmstudio.ai/docs/developer/core/server).
+4. On Franky Setup's **Answers** page, choose **LM Studio**. When both programs run on the AI server, the usual address is **`http://127.0.0.1:1234/v1`**.
+5. Click **Find models**, choose the model, then **Save answer settings**.
 
-Do not copy `bridge/.secrets` between computers or Windows users. Those optional credentials are protected for the original Windows user/machine. Re-enter any needed provider credentials locally on the destination. Default LM Studio mode needs no paid cloud account.
+`127.0.0.1` means “this computer.” It works here because the bridge and LM Studio are on the same server. If LM Studio uses another port or requires a token, tick **LM Studio is on another PC or needs a token** to show those fields. Keep tokens out of addresses and robot settings.
 
-## 2. Prepare LM Studio on the AI server
+## 3. Check the voice and choose the server address
 
-1. Open LM Studio on **192.168.5.250** and load the chat model you want Franky to use.
-2. Start its API server, normally on port **1234**.
-3. Confirm the loaded model can answer in LM Studio.
+1. On **Voice**, click **Prepare Franky's voice**, then **Play voice preview**.
+2. On **Connect**, click **Find this PC's addresses**. Choose the server's home Ethernet or Wi-Fi address, such as **`http://192.168.5.250:8766`**. Avoid VPN and virtual-network adapters.
+3. Click **Save bridge address**, then **Allow home-network access**. Windows may ask an administrator to approve this step.
+4. Skip **Robot** if Franky already has compatible working firmware. Moving the bridge to a server does not require another USB flash.
+5. On **Try it**, click **Start bridge**, then **Check readiness**. Give the speech models time to load. Check again if they are still starting.
 
-Because the bridge will run on the same machine, it uses `http://127.0.0.1:1234/v1`. Franky does not need to reach LM Studio's port directly. If you configured another API port, use that port during provider setup. If your LM Studio server requires authentication, configure `LM_STUDIO_TOKEN` locally for the Windows user that runs the bridge; do not place it in the advertised URL or robot settings.
+If the server has no speakers, open **`http://192.168.5.250:8766`** on your normal PC or phone. Choose a voice and play a preview there. A browser preview plays on the device running that browser.
 
-## 3. Install and record the server address
+The network button allows port **8766** on Windows **Private** networks for nearby devices on the same subnet. Use your trusted home network. If the website only works on the server itself, check the Windows network profile and firewall with the person who manages the server. Do not turn off the firewall or forward this port through your Internet router.
 
-1. In `C:\Apps\Franky`, double-click **START-HERE.cmd**.
-2. Select **LM Studio**. Enter **`http://127.0.0.1:1234/v1`** when asked for the LM Studio address.
-3. Select the exact chat model from the displayed list. Let setup install the Python speech libraries and download both Kokoro files and the English recognition model. This is required even when LM Studio already works; see the [speech component checklist](VOICE-SETUP.md#2-let-start-here-install-the-speech-components). The C++ runtime is installed separately in step 1 above.
-4. Double-click **SET-BRIDGE-ADDRESS.cmd**. Enter **`http://192.168.5.250:8766`** and save it.
-5. Double-click **START-FRANKY.cmd**, keeping its window open.
-6. On the server, open **`http://localhost:8766`**. Wait for the speech readiness checks to finish, then try a voice preview. **Setup complete** alone does not test voice generation. If the server has no speakers, preview from your normal PC at **`http://192.168.5.250:8766`** after allowing LAN access below.
+## 4. Tell the robot where the server is
 
-The page's **Connection settings** displays the advertised bridge address and the separate LM Studio address. Saving the advertised address does not change Windows networking, the listen port, firewall rules, or Franky's stored device settings. Restart the bridge after changing configuration so the dashboard uses the new values.
-
-If recognition and chat are ready but voice fails, check for unfinished Kokoro downloads. Only `.part` files in `bridge/models/kokoro` means setup did not finish those downloads. Use the [exact PowerShell retry steps](VOICE-SETUP.md#voice-fails-while-recognition-and-chat-are-ready), wait for both final files, then restart and preview. Do not rename `.part` files.
-
-Keep `192.168.5.250` stable using your existing static address or a DHCP reservation. The bridge listens on port 8766 on the server's interfaces. The advertised address is the reachable URL you give to the robot and other browsers.
-
-## 4. Allow access from your home network
-
-On the AI server, open **PowerShell as Administrator** and run:
-
-```powershell
-Set-Location 'C:\Apps\Franky'
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\allow-lan.ps1
-```
-
-This enables inbound TCP **8766** for the **Private** Windows network profile and **LocalSubnet** clients only. Use it on the trusted home-network adapter. Do not forward this port through your Internet router; the bridge has no login.
-
-If the server uses a Domain profile, or Franky/your PC is on a different routed subnet or VLAN, the supplied rule may not match. Have your network administrator scope a TCP 8766 rule to the correct trusted profile and client address/subnet, and check inter-VLAN routing. Do not solve this by disabling the firewall or allowing unrestricted public access.
-
-From your normal PC, open **`http://192.168.5.250:8766`**. You should see the same voice/readiness page. A preview plays on the browser's computer or phone; normal robot replies play on Franky's speaker.
-
-## 5. Point Franky at the new server
-
-1. Keep the old bridge installation available until you have verified the new server.
-2. Open the **device address shown on Franky's LCD**, not the bridge website. Note the old bridge address in case you need to roll back.
+1. Note Franky's old bridge address so you can switch back if needed.
+2. In a browser, open **the device address shown on Franky's screen**. This is the robot's settings page, which is different from the voice website.
 3. Under **A place on your network**, set **Voice bridge / AI server address** to **`http://192.168.5.250:8766`**.
-4. Keep the existing Wi-Fi name. Leave the Wi-Fi password blank to retain it for that same network.
-5. Choose **Save connection & restart**. If Franky is in an active conversation, choose **Stop current reply** first. Passive wake listening does not block settings in the new firmware.
-6. After reconnecting, ask a short question. Check voice playback, a spoken volume change, hands-free follow-up, and BOOT/web Stop.
+4. Keep the same Wi-Fi name. Leave the Wi-Fi password blank to keep the saved password for that same network.
+5. Choose **Save connection & restart**. If Franky is answering a question, use **Stop current reply** first.
+6. Let Franky reconnect, then **hold BOOT while asking a short question and release it to send**. Listen for the answer. Try **Stop** and a volume command too.
 
-Changing the server address alone does not require another flash on compatible Franky firmware. The new Stop and passive-listening controls require the updated firmware from this version; see [FIRMWARE.md](FIRMWARE.md). The release is source-only, so build/flash is separate from installing the Windows bridge.
+For a robot that has not joined your home Wi-Fi yet, use [first-time robot setup](WINDOWS-INSTALLER.md). It explains the **DigitalRCS** setup network and the home **2.4 GHz** Wi-Fi choice.
 
-Once the robot works through the AI server, stop the old PC bridge with **Ctrl+C**. Keep its folder as a rollback copy until you are satisfied.
+## Which address goes where?
 
-## 6. Verify and troubleshoot
+| What you are setting up | Example address |
+| --- | --- |
+| LM Studio inside Franky Setup on the AI server | `http://127.0.0.1:1234/v1` |
+| Bridge address saved on the Connect page and on the robot | `http://192.168.5.250:8766` |
+| Voice website from another PC or phone | `http://192.168.5.250:8766` |
+| Voice website on the AI server itself | `http://localhost:8766` |
+| Robot settings page | The address shown on Franky's screen |
 
-Run **CHECK-SETUP.cmd** on the AI server. It reports cached recognition, voice, and chat availability. A listed chat model does not prove generation speed, quota, or end-to-end audio quality; the spoken test above is still needed.
+Port **1234** belongs to LM Studio. Port **8766** belongs to Franky's bridge and website. Never use `localhost` or `127.0.0.1` as the robot's bridge address: from the robot, those mean the robot itself.
 
-From another Windows PC, this checks the bridge port:
+Saving the bridge address does not change Windows networking or update the robot automatically. Keep the server's address stable; a router address reservation is one way to do that. Ask the person who manages your network if you need help.
 
-```powershell
-Test-NetConnection 192.168.5.250 -Port 8766
-```
+## Every day
 
-- **Works on localhost but not another PC:** check the Windows firewall profile, LocalSubnet scope, routing, and whether the IP is still 192.168.5.250.
-- **Website works but chat is unavailable:** check LM Studio's API server, loaded model, exact model ID, and local port. Restart the bridge after changing provider configuration.
-- **Website shows the old address:** rerun SET-BRIDGE-ADDRESS and restart the bridge. A `BRIDGE_PUBLIC_URL` environment override takes precedence over the saved address.
-- **LM Studio address unexpectedly stays on another PC:** check `LM_STUDIO_URL` and `LM_STUDIO_MODEL` environment overrides on the AI server.
-- **Speech service needs attention or preview fails:** leave startup time for local model preparation, then use the [voice dependency and download repair steps](VOICE-SETUP.md#if-a-speech-component-is-missing). Rerunning setup alone does not install a missing Windows C++ runtime.
-- **Robot cannot connect but the browser can:** confirm it uses **8766**, not **1234**, and is on a network allowed to reach the server.
+Start LM Studio and its selected model/server, then use **Start Franky** on the AI server. Keep the server awake. Setup does not add an automatic Windows service or start the programs at login.
 
-## Everyday operation and rollback
+To stop the installed copy, open **Franky Setup**, go to **Try it**, and click **Stop bridge**. Closing the setup window alone leaves its bridge running.
 
-Keep the AI server awake, LM Studio's API server/model available, and the Franky bridge running. After a Windows reboot, start LM Studio and **START-FRANKY.cmd** again. This release does not install an automatic Windows service or startup task.
+Once everything works through the server, stop the old PC's bridge. Keep its folder for a while. To switch back, start the old bridge and put its old address back into the robot's settings.
 
-To roll back, start the old PC bridge and restore its saved address on Franky's device page. The migration does not erase robot Wi-Fi settings or remove the old installation.
+## If something does not work
+
+| What you see | What to try |
+| --- | --- |
+| Website opens on the server, but not your phone/PC | Check the server address, home-network profile and firewall. Guest Wi-Fi can block devices from talking. |
+| Website opens, but chat is unavailable | Start LM Studio's server and load the selected model. Check the model on **Answers**, save, and restart the bridge. |
+| Voice or listening is not ready | Use **Prepare Franky's voice**, wait for it to finish, then try a preview. See [voice help](VOICE-SETUP.md). |
+| Website shows the old bridge address | Stop the bridge, save the new address on **Connect**, then start it again. Update the robot separately. |
+| Robot cannot connect | Check that its bridge address ends in **8766**, and that it can reach the same home network as the server. |
+| Another Franky copy is already running | Stop it from the original setup or command window, then start the copy you want to use. |
+
+A ready message checks software availability. A real spoken question is still needed to test the microphone, speakers, and chat response. See [troubleshooting](TROUBLESHOOTING.md) for more help.
+
+## Moving settings from an older manual installation
+
+This section is optional. New users can skip it.
+
+- Do not copy `.venv` or `.runtime` from another machine. Run Setup.exe on the destination instead.
+- Your old manual folder is not imported automatically into a new default installer folder. Choose the provider/model again in Franky Setup. Stop both copies before moving settings files.
+- You can copy `bridge/voice_settings.json` to keep a voice choice. The installer already contains the standard speech models; LM Studio manages its chat models separately.
+- Do not transfer `bridge/.secrets` between computers or Windows users. Windows protects these keys for their original account/machine. Re-enter any needed provider key in the destination setup app.
+- Manual launchers still use environment overrides such as `LM_STUDIO_URL`, `LM_STUDIO_MODEL`, and `BRIDGE_PUBLIC_URL`. The native setup app uses the routing choices saved in its own window. See [configuration details](ARCHITECTURE.md#configuration).
+- If you prefer the ZIP/command-window route, follow [manual installation](INSTALL.md), use **SET-BRIDGE-ADDRESS.cmd** for the advertised address, and keep **START-FRANKY.cmd** open while the bridge runs.
+
+For a Domain network, routed subnet, or VLAN, the supplied Private/LocalSubnet firewall rule may not match. Have the network administrator choose a rule limited to the intended clients. An optional advanced connection check is `Test-NetConnection 192.168.5.250 -Port 8766` in PowerShell.

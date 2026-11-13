@@ -2,6 +2,7 @@
 
 ## 0.5.0-preview.1
 
+- Added an easy seven-step setup guide, a download chooser, a plain-language glossary, installer-first troubleshooting and AI-server instructions. Manual setup and developer build guides remain available separately.
 - Added a per-user Windows Setup.exe and native guided setup/control panel. The installer bundles an isolated Python runtime, speech dependencies, Kokoro voices, and both English hearing models; no system Python or package commands are needed.
 - Guided LM Studio installation/connection, existing LAN server selection, and explicitly chosen online providers with masked, Windows-protected keys. Existing provider, voice, and output-budget settings are retained.
 - Added voice preview, home-network address selection, a scoped firewall action, readiness checks, and start/stop shortcuts.

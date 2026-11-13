@@ -1,69 +1,156 @@
-# Franky's Windows setup app
+# Set up Franky on Windows
 
-The all-in-one **Setup.exe** is for Windows 10/11 on an Intel or AMD 64-bit PC. It installs Franky's bridge, website, private Python runtime, speech libraries, English hearing models, Kokoro voices, and an optional USB firmware tool. You do not need to install Python, use a terminal, or compile the robot firmware.
+This guide is for **Franky 0.5.0-preview.1** on **Windows 10 or 11, Intel/AMD 64-bit**.
 
-LM Studio and its chat model are a separate choice. An online provider instead needs your own account and key. Initial LM Studio/model downloads can take longer than a few minutes; setup cannot make a large model fit a small PC.
+[Download the Windows installer](https://github.com/digitalrcs/DigitalRCS-Local-LLM-Chatbot/releases/download/v0.5.0-preview.1/DigitalRCS-Franky-0.5.0-preview.1-Setup.exe). Choose this `.exe` for normal setup. The source ZIP is for developers.
 
-## Start here
+Speech recognition and voices are included. You do not need Python, a terminal, a Hugging Face login, or a firmware compiler. LM Studio and its chat models are separate downloads. Large models can take a while to download and load.
 
-1. Download the **Setup.exe** asset, then open it. The source ZIP is for development and manual installation.
-2. Keep the suggested installation folder. If Windows asks to install Microsoft speech-library support, approve that prompt or ask the person who manages the PC. The main setup runs as your Windows user.
-3. Leave **Open Franky setup** selected at the end. Use the steps down the left side of the window.
+Three words you will see:
 
-This community preview is not code-signed by DigitalRCS. Windows may show an unknown-publisher or reputation prompt. Confirm that your download came from this project's release and matches its checksum; do not turn off Windows security. Organization-managed PCs may require an administrator to allow the app.
+- **Bridge:** The Windows program that connects the robot's audio to speech recognition, answers, and voice output. The PC does the heavy work.
+- **Chat model:** The AI program that writes answers. LM Studio runs it on your PC or another home-network PC. An online provider runs it on its own computers.
+- **Firmware:** Software stored on the ESP32 robot. *Flashing* means installing or replacing that software.
 
-## Choose where answers come from
+Have your home Wi-Fi name and password ready. The robot needs **2.4 GHz Wi-Fi**. USB installation supports the **LAFVIN LA064 ESP32-S3 N16R8** kit and needs a USB **data** cable. You can skip USB installation if your robot already has working compatible Franky firmware.
 
-**LM Studio on this PC** keeps the conversation local. Use the install button, open LM Studio, and choose a chat model that LM Studio says fits your PC. Let its download finish. Return to Franky, start LM Studio's connection, choose **Find models**, select the model, and save. The wizard can open LM Studio and start its local server; it does not accept model licenses or choose a large model for you.
+## 1. Welcome — install and open the setup app
 
-If LM Studio already runs on another computer, expand **LM Studio is on another PC or needs a token** and enter that computer's address, such as `http://192.168.1.20:1234/v1`. Keep that computer and LM Studio running. This also works with an existing AI server such as `http://192.168.5.250:1234/v1` when its LM Studio server permits LAN connections.
+1. Open the downloaded installer and keep the suggested folder.
+2. If Windows asks to install Microsoft support files for the speech libraries, approve the prompt or ask the person who manages the PC.
+3. Leave **Open Franky setup and control panel** selected, then choose **Finish**.
+4. Read **Welcome**, then choose **Next**. You can also choose a step from the left side.
 
-For **OpenRouter free models**, **Gemini**, or **OpenAI**, read the online-provider note, enter your key in the masked field, then find and save a model. These services receive conversation text. Availability, account limits, and charges depend on the service; there is no automatic provider switching. OpenRouter choices are restricted to free model IDs. Keys are encrypted for your Windows account and never sent to the robot or included in packages. See [provider choices](PROVIDERS.md).
+This is an **unsigned community preview**. Windows may show an unknown-publisher or reputation warning. Check that you downloaded it from the project's release link above. Do not turn off Windows security. A school or work PC may need its administrator's permission.
 
-## Check the voice
+Keep the setup window open while a task runs. Some buttons stay disabled until that task finishes.
 
-The normal installer includes all required speech files. **Prepare voice** checks them, and **Play preview** sends a short sample to this PC's speakers. If a file is missing, setup can download it again. You do not need a Hugging Face account for these public models. With the bundled models, normal recognition loads directly from disk.
+## 2. Answers — choose where replies come from
 
-A ready message confirms the software loaded. Listen to the preview yourself to check the speaker and volume.
+For answers on this PC, keep **LM Studio — local PC or home network** in **Answer provider**.
 
-## Connect Franky
+1. Choose **Install LM Studio** if you do not have it. **Official download** opens its download website.
+2. In LM Studio, download a chat model that fits your PC. Let the download finish, then load the model.
+3. Return to Franky and choose **Start LM Studio**. This opens LM Studio and tries to start its local API server, which lets Franky ask it questions.
+4. Choose **Find models**, select a **Chat model**, then choose **Save answer settings**.
 
-Choose your home Wi-Fi or Ethernet address from the list. VPN/virtual-network addresses may also be listed. Save the address shown for Franky, then use **Allow home-network access**. Windows may ask an administrator to approve this step. It allows port 8766 only on a Private network and for local-subnet devices; it does not expose Franky to the Internet.
+If the server helper is unavailable, open LM Studio's Developer area and start the server there. Keep LM Studio and the selected model running. Franky does not choose model licenses or download a chat model for you.
 
-For a new supported robot, the USB page can install the included **LAFVIN LA064 ESP32-S3 N16R8** firmware:
+Leave **LM Studio is on another PC or needs a token** unticked for normal local setup. If you already use LM Studio on another PC, tick it and enter that PC's **LM Studio API address**. For example, `http://192.168.1.20:1234/v1` uses an example address: replace it with that PC's real address. Its LM Studio server must allow home-network connections. Enter a token only if that server requires one.
 
-1. Connect the robot with a USB data cable and refresh the port list.
-2. Select its port. If unsure, unplug it, refresh, reconnect it, and refresh again.
-3. Confirm the exact supported kit, then choose **Install robot software**. This replaces firmware; it preserves the Franky settings region and saves a private backup first. It does not guarantee importing settings from factory firmware.
-4. Keep the cable connected until the upload finishes. If no port appears, use the official USB-driver help link.
+You can instead choose an online provider:
 
-You can skip USB flashing if Franky already has working compatible firmware. The bundled firmware is **0.4.0-dev**; this installer does not require rebuilding it.
+| Choice in the app | What to know |
+| --- | --- |
+| **OpenRouter — supported free models** | Franky lists supported free model IDs. Account and rate limits still apply. |
+| **Google Gemini — check account limits** | Availability and charges depend on your account and model. |
+| **OpenAI API — metered usage** | API use is billed through your provider account. |
 
-For first-time Wi-Fi setup, join the **DigitalRCS** setup network (password **11181118**) shown on the robot and open **http://192.168.4.1**. Enter your home **2.4 GHz Wi-Fi** and the bridge address displayed by the wizard. After saving, reconnect your PC/phone to the home network. The device's screen shows its normal address. See [firmware setup](FIRMWARE.md) if the kit is not connected yet.
+For an online provider, enter your own API key and read the consent checkbox. Tick it only if you agree to send conversation text to that provider and accept its limits and charges. Then use **Find models**, choose a model, and **Save answer settings**. Speech recognition and voice generation stay on your PC. There is no automatic switch to another provider.
 
-## Try it and use it every day
+Saved keys are protected for your Windows account. They are not sent to the robot. See [answer provider choices](PROVIDERS.md) for more detail.
 
-Choose **Start bridge**, wait for the three readiness checks, and open the voice page. Ask Franky a short question after his ready chime. The setup app cannot confirm microphone/speaker quality without your spoken test.
+If the bridge is already running, use **Try it → Stop bridge** before changing saved settings.
 
-Use the **Start Franky** shortcut for everyday use and **Franky Setup** to change settings. The bridge keeps running when you close the setup window; reopen setup and use **Stop bridge** to stop the copy it started. Keep this PC awake and your chosen answer service available. Startup at Windows login is not enabled automatically.
+## 3. Voice — check the PC's speech
 
-The setup app uses the answer service and address you saved in its window, even if a terminal previously set different provider/address environment variables. A bridge launched through the manual `.cmd` scripts still uses their documented environment overrides. If another copy of Franky is already running, stop it from its original window before starting this installation.
+1. Choose **Prepare Franky's voice** and wait for it to finish.
+2. Choose **Play voice preview**.
+3. Listen through this PC's speakers. Check Windows volume and the selected sound output if you hear nothing.
 
-## Retry, update, or uninstall
+The installer includes the speech files. This step checks and loads them; it can download replacements if files are missing. No Hugging Face login is needed.
 
-- If a step fails, read its message and retry that step. A failed upload never triggers an erase-all operation.
-- Stop the bridge before installing an update. Existing provider settings, encrypted keys, selected voice, and speech models are preserved.
-- Use Windows **Installed apps → Franky → Uninstall**. Models, settings, protected keys, and private backups remain in the installation folder so a reinstall can reuse them. Delete that remaining folder yourself only if you want to remove this local data too.
-- LM Studio, its models, Microsoft runtime support, and USB drivers are separate programs and are not removed by Franky's uninstaller.
+The preview checks the PC's audio. You will test the robot's microphone and speaker in step 6.
 
-## Build the installer from source
+## 4. Connect — save the PC's home-network address
 
-The builder needs Python 3.13 x64 with the project's locked requirements, the Windows .NET Framework C# compiler, and Inno Setup 6. It builds into ignored `dist/installer` and does not copy a developer virtual environment or configuration.
+1. Choose **Find this PC's addresses**.
+2. Under **Robot / phone bridge address**, select the address for your home Wi-Fi or Ethernet connection. Avoid VPN and virtual-network entries.
+3. Choose **Save bridge address**, then **Copy address** so you can use it on the robot.
+4. Choose **Allow home-network access**. Windows may ask an administrator to approve it.
 
-1. Run `python scripts/prepare-installer-assets.py` with the development environment to prepare the pinned public models, flash utility, runtime-support installer, and notices.
-2. Prepare the tested firmware's four separate images plus their manifest under `dist/installer-assets/firmware`; include corresponding source/relink materials under `dist/installer-assets`.
-3. Run `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-installer.ps1`.
+An address such as `http://192.168.1.20:8766` is an example. Use the address shown for **your** PC. The bridge uses port **8766**. LM Studio uses port **1234**. The robot needs the bridge address.
 
-The builder verifies the pinned portable CPython archive, Microsoft signature, firmware hashes, and staged runtime. It records asset provenance and payload hashes. Rebuilding requires network access for the build inputs. Inspect the resulting package before publishing. The source ZIP remains available separately.
+The firewall button allows the bridge on a **Private** Windows network, for devices on the local subnet. Use this on your trusted home network. It does not open an Internet router port.
 
-All bundled components retain their own licenses. See [third-party notices](../THIRD_PARTY_NOTICES.md), the installed `third-party` folder, package license directories, and the firmware source/relink companion. The optional LM Studio application and its chat models are not redistributed in Franky's installer.
+The PC and robot need to reach each other on the home network. Guest Wi-Fi often blocks this. Do not put `localhost` into the robot's bridge setting: that name points back to whichever device is using it.
+
+## 5. Robot — install firmware if needed, then connect Wi-Fi
+
+**Already using compatible Franky firmware?** Skip the USB update and continue to the Wi-Fi instructions below. New users can install the included firmware without compiling anything.
+
+Installer **0.5.0-preview.1** includes robot firmware **0.4.0-dev**. Seeing **0.4.0-dev** on the robot after this update is expected: the installer and robot have separate version numbers.
+
+To install it over USB:
+
+1. Open **Robot**. Connect the supported kit with a USB data cable. Close Arduino and any serial monitor.
+2. Choose **Refresh USB ports**, then select **Robot USB / COM port**. If unsure which port is yours, unplug the robot, refresh, reconnect it, and refresh again. Do this before starting an update.
+3. Tick the confirmation only if your board is the **LAFVIN LA064 ESP32-S3 N16R8** kit.
+4. Choose **Install robot firmware** and read the confirmation before choosing **Yes**.
+5. Keep the cable connected until the update finishes. If no port appears, choose **USB driver help**.
+
+Flashing replaces the robot's firmware. The tool saves a private backup of its partition table and settings area first, and keeps the Franky settings region. It cannot promise to import factory-firmware settings. Keep that backup private because it may contain Wi-Fi details.
+
+Now connect the robot to Wi-Fi:
+
+1. Look at the robot's screen. If it already shows a normal home-network address, open that address on a PC or phone on the same network, then go to step 4 below.
+2. If it cannot join Wi-Fi, wait about 20 seconds for setup mode. On your phone or PC, join Wi-Fi **DigitalRCS** with password **11181118**.
+3. Stay connected even if your phone says there is no Internet. Open **http://192.168.4.1** in its browser.
+4. Enter your home **2.4 GHz Wi-Fi** name and password. In **Voice bridge / AI server address**, enter the PC's bridge address saved on **Connect**, including `:8766`.
+5. Choose **Save connection & restart**.
+6. Reconnect your phone or PC to your home Wi-Fi. After the robot restarts, use the normal address shown on its screen for its settings page.
+
+To reopen setup, hold **Page Up** for three seconds while Franky is idle. Do not hold **BOOT** while turning the robot on: that selects download mode. See [robot firmware and Wi-Fi setup](FIRMWARE.md) for more help.
+
+## 6. Try it — ask your first question
+
+1. Choose **Start bridge**.
+2. Choose **Check readiness** and read the results for speech recognition, voice, and the chat model. Wait or fix the reported issue if a check is not ready.
+3. Choose **Open voice page** to open the bridge's website.
+4. On the robot, hold **BOOT**, ask a short question, then release it. Listen for Franky's reply.
+
+Press **BOOT** during a reply to stop it. The software checks cannot prove that the robot hears you clearly or that its speaker works. Your spoken test checks that.
+
+Hands-free listening is optional and experimental. To try it, enable it on the robot's settings page. Say **Hello Franky**, wait for the rising chime, then ask your question. See [hands-free conversations](HANDS-FREE.md).
+
+## 7. Everyday use — start, stop, and look after Franky
+
+Check the **Everyday use** page. If its checklist is incomplete, return to the named step and finish it. A firmware update is optional.
+
+Each time you want to chat:
+
+1. Keep the bridge PC awake and connected to your home network.
+2. If using LM Studio, start its server and load your selected model. Keep the other PC awake too if it runs your model.
+3. Open the **Start Franky** shortcut. It starts the bridge and opens the voice page.
+4. Switch on the robot and ask a question.
+
+Use **Franky Setup** to change settings. To stop the bridge, open **Try it** and choose **Stop bridge**. Closing the setup window leaves the bridge running. Franky does not automatically start when you log into Windows.
+
+### Update
+
+Stop the bridge and close the setup window. Download the new Windows installer and install it into the same folder. Your saved settings, protected keys, selected voice, and speech models are kept. Open setup and check readiness again. Update the robot's firmware only when the release instructions call for it.
+
+### Uninstall
+
+Stop the bridge and close setup. Open Windows **Settings → Apps**, find **Franky by DigitalRCS**, and choose **Uninstall**. You can also use the **Uninstall Franky** Start menu shortcut.
+
+Uninstalling keeps settings, protected keys, speech models, logs, and private backups so a reinstall can reuse them. The default folder is `%LOCALAPPDATA%\Programs\Franky`. Delete the remaining folder yourself only if you also want to remove that saved data. Save any backups you need first.
+
+LM Studio, its chat models, Microsoft runtime support, and USB drivers are separate. Franky's uninstaller does not remove them.
+
+## Common fixes
+
+| Problem | Try this |
+| --- | --- |
+| **Find models** cannot reach LM Studio | Load a model and start its API server. For another PC, check its address and network access. |
+| The model list is empty | Load a chat model in LM Studio, or check the online provider's account, key, and limits. Then try **Find models** again. |
+| Settings will not save while the bridge runs | Open **Try it**, choose **Stop bridge**, then save again. |
+| The voice preview is silent | Check Windows volume, speakers, and sound output. Try **Prepare Franky's voice** again if preparation failed. |
+| The robot cannot reach the bridge | Check the saved PC address, port **8766**, the firewall button, and that both devices can communicate on the same home network. Avoid isolated guest Wi-Fi. |
+| No robot USB port appears | Try a USB data cable and another USB socket. Choose **USB driver help**, then refresh the ports. |
+| Another Franky installation is running | Stop that copy from its own setup window before starting this one. |
+| An update or uninstall says Franky is running | Finish any active task. Use **Stop bridge**, close setup, then retry. Never interrupt a firmware upload. |
+
+Read the message when a step fails, fix that issue, and retry the step. A failed upload does not trigger an erase-all operation.
+
+[More troubleshooting](TROUBLESHOOTING.md) · [All guides](README.md) · [Build the installer from source](BUILD-INSTALLER.md) · [Third-party licenses](../THIRD_PARTY_NOTICES.md)

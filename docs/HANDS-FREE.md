@@ -2,11 +2,13 @@
 
 With the updated PC bridge and firmware, Franky can answer without holding a button. This is an experimental local speech-recognition feature, not a claim of Google Home microphone range or a trained on-device wake-word model.
 
+First complete the [Windows installer guide](WINDOWS-INSTALLER.md) and try one question by holding **BOOT** while speaking, then releasing it. Hands-free listening is off on a fresh installation. You turn it on from **the robot's device page**, at the address on his screen; the PC's voice page is for selecting voices.
+
 ## Turn it on
 
-1. Start the updated voice bridge and LM Studio as usual.
+1. Use the **Start Franky** shortcut, or choose **Start bridge** in **Franky Setup → Try it**. Keep your selected answer service available; for local answers, start LM Studio and load the chosen model.
 2. Open the device address shown on Franky's screen in your phone's browser.
-3. Under **Hands-free conversations**, check **Enable Hello Franky** and choose **Save hands-free settings**.
+3. Under **Hands-free conversations**, check **Enable Hello Franky (experimental)** and choose **Save hands-free settings**.
 4. Say **Hello Franky** on its own. Wait for the **rising ready chime**, then ask your question. You have about **15 seconds to start speaking**.
 5. Pause briefly when finished. Franky ends the recording after about 1.5 seconds of quiet, or at the ten-second limit.
 

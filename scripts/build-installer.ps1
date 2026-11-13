@@ -199,6 +199,17 @@ foreach ($model in @('whisper-base.en', 'whisper-tiny.en')) {
 }
 
 # Only manifest-listed source archives and explicit notice files are redistributed.
+$requiredSources = @(
+    'esptool-5.2.0-source.zip', 'espeak-ng-1.52.0-source.zip', 'espeakng-loader-source.zip',
+    'av-18.1.0.tar.gz', 'PyAV-18.1.0-build-source.zip', 'pyav-ffmpeg-8.1.2-1-build-source.zip',
+    'pyav-ffmpeg-8.1.2-1-dependency-sources.zip', 'pyav-msys2-runtime-sources.zip',
+    'Franky-0.4.0-firmware-relink-sources.zip', 'Franky-0.4.0-sdk-notices.zip'
+)
+foreach ($name in $requiredSources) {
+    $archive = Join-Path $externalAssetRoot $name
+    Require-File $archive 'Required matching source/notices material (see docs/BUILD-INSTALLER.md)'
+    Test-AssetHash $name $archive
+}
 foreach ($asset in $externalAssets.assets) {
     if ($asset.name -match '^[A-Za-z0-9_.+-]+\.(zip|tar\.gz|tgz)$') {
         $archive = Join-Path $externalAssetRoot $asset.name

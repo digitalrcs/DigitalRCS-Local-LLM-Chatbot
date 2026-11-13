@@ -1,10 +1,10 @@
 # DigitalRCS Local LLM Chatbot
 
-**Meet Franky: an English-speaking chatbot companion powered by a local AI model.**
+**Meet Franky: a talking frog robot that uses your computer to listen, think, and speak.**
 
-[Windows setup app](docs/WINDOWS-INSTALLER.md) · [Manual installation](docs/INSTALL.md) · [Voice software and downloads](docs/VOICE-SETUP.md) · [Move to a Windows AI server](docs/WINDOWS-SERVER.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [How it works](docs/ARCHITECTURE.md) · [Credits](THIRD_PARTY_NOTICES.md)
+[Download Windows Setup](https://github.com/digitalrcs/DigitalRCS-Local-LLM-Chatbot/releases/download/v0.5.0-preview.1/DigitalRCS-Franky-0.5.0-preview.1-Setup.exe) · [Easy setup guide](docs/WINDOWS-INSTALLER.md) · [All guides](docs/README.md) · [Help with a problem](docs/TROUBLESHOOTING.md)
 
-> **Development preview.** Includes the PC bridge and newly written Franky firmware source for the LAFVIN LA064. The firmware has its own application code and frog artwork, with licensed Espressif codec drivers. Read the [firmware guide](docs/FIRMWARE.md) before building or flashing; the release does not bundle inherited XiaoKe firmware.
+> **Preview release:** you can try it now, but testing on a completely fresh Windows PC is still outstanding. The installer is not digitally signed by DigitalRCS. It supports the **LAFVIN LA064 ESP32-S3 N16R8** kit; the guided USB step is only for that robot.
 
 ## English conversation, local processing
 
@@ -26,17 +26,37 @@ Franky's PC bridge brings together English speech recognition, an LM Studio chat
 
 ## Start here
 
-1. Download **Setup.exe** from a release that provides the Windows installer. Run it on a Windows 10/11 x64 PC.
-2. Follow **Franky Setup** to choose LM Studio or an online provider, check the voice, and connect your robot. Python and speech files are included; no terminal is needed.
-3. Use **Start Franky** for everyday use. Keep the PC awake and your chosen answer service available.
+You need a Windows 10/11 PC with an Intel or AMD 64-bit processor, the supported robot, a USB **data** cable, and home Wi-Fi that supports **2.4 GHz**. You also need Internet access for the download and, if you choose LM Studio, a chat model that fits your PC. A charging-only USB cable cannot update the robot.
 
-The [Windows setup guide](docs/WINDOWS-INSTALLER.md) explains each choice. LM Studio and chat-model downloads depend on your connection and hardware. Windows may ask an administrator to approve runtime support or home-network access.
+1. **Download and open [Franky Setup.exe](https://github.com/digitalrcs/DigitalRCS-Local-LLM-Chatbot/releases/download/v0.5.0-preview.1/DigitalRCS-Franky-0.5.0-preview.1-Setup.exe).** Keep the suggested folder and open **Franky Setup** when installation finishes.
+2. **Follow the seven steps in the window.** Choose where answers come from, check the voice, connect the robot, and try a question. The optional USB step installs the robot software for you.
+3. **Next time, use Start Franky.** Keep the PC awake and your chosen answer service running.
 
-The **Windows ZIP** is still available for manual installation and development: extract it, install Python 3.13 and the [C++ speech runtime](docs/VOICE-SETUP.md), then run **START-HERE.cmd**. Follow [manual installation](docs/INSTALL.md) for that route.
+The installer includes Python, speech tools, English listening models, and Franky's voices. **You do not need to type commands, install Arduino, edit code, or log in to Hugging Face.** The [step-by-step guide](docs/WINDOWS-INSTALLER.md) explains every page and button. If Windows asks for an administrator's password, ask the person who manages the PC.
 
-You do not need to edit code for either route.
+Allow a few minutes for installation. The speech files take hundreds of megabytes, and a chat model can be several gigabytes, so slow downloads may take longer. Speech files are already included; LM Studio and its chat model are separate downloads.
 
-To run everything on your Windows AI server, follow [Move the bridge and website](docs/WINDOWS-SERVER.md). The website is included in the bridge, and **SET-BRIDGE-ADDRESS.cmd** records the LAN address shown in its connection settings. Franky's device settings page remains on the ESP32.
+### Which download do I choose?
+
+| File on the release page | Who needs it? |
+| --- | --- |
+| **DigitalRCS-Franky-0.5.0-preview.1-Setup.exe** | Most Windows users. Start here. |
+| **Windows.zip** | People who want the code or prefer [manual installation](docs/INSTALL.md). It does not contain the ready-to-run installer. |
+| **Bundled-Sources.zip** | Developers who want the bundled components' source, notices, and firmware relink materials. |
+| **SHA256SUMS.txt** or **.sha256** | Optional files for checking that a download is complete and unchanged. |
+| GitHub's **Source code (zip/tar.gz)** | A copy of the repository for developers. It is not Setup.exe. |
+
+### Where will the answers come from?
+
+| Choice | What it means |
+| --- | --- |
+| **LM Studio on this PC** | Your computer writes the answers. No paid online AI account is needed. You download a chat model first. |
+| **LM Studio on another home PC** | That computer writes the answers. Enter its address in setup and keep it running. |
+| **OpenRouter, Gemini, or OpenAI** | An online service writes the answers. You need your own account and API key; limits and charges depend on the service. |
+
+A **model** is the downloaded AI that writes answers. The **bridge** is Franky's PC helper: it connects the robot to the listening, answer, and voice tools. **Firmware** is the software stored inside the robot. Setup handles these parts step by step.
+
+Already have an AI server? [Move the bridge and website to it](docs/WINDOWS-SERVER.md). The website comes with the bridge, so you do not need a separate web server.
 
 ## Meet the new Franky
 
@@ -63,7 +83,7 @@ Initial setup needs Internet access for the installer and your chosen chat servi
 
 This preview is intended for **trusted home networks**. Its HTTP endpoints have no login and must not be forwarded to the Internet. See [security information](SECURITY.md).
 
-Windows x64 and Python 3.13 are the primary setup target. Python 3.11 is also used by the working prototype. LM Studio performance depends on your model and computer; this project does not prescribe one model or promise a minimum response speed.
+The installer includes its own Python 3.13 runtime. Manual setup is tested with Python 3.11 and 3.13. LM Studio performance depends on the model and computer; choose a model LM Studio says fits your PC. Windows on ARM is not tested.
 
 ## Development
 
